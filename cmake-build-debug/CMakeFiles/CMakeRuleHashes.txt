@@ -1,2 +1,0 @@
-# Hashes of file build rules.
-c6c7e3ed4efc42713c0c21e2f5f69236 lambda/proto/types.pb.h
