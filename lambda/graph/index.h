@@ -20,8 +20,8 @@
 #include "flare/container/dynamic_bitset.h"
 #include "lambda/common/vector_distance.h"
 #include "locking.h"
-#include "lambda/common/natural_number_map.h"
-#include "lambda/common/natural_number_set.h"
+#include "flare/base/natural_number_map.h"
+#include "flare/base/natural_number_set.h"
 #include "lambda/common/math_utils.h"
 #include "neighbor.h"
 #include "parameters.h"
@@ -444,10 +444,10 @@ namespace lambda {
 
         // data structures, flags and locks for dynamic indexing
         flare::sparse_map<TagT, unsigned> _tag_to_location;
-        natural_number_map<unsigned, TagT> _location_to_tag;
+        flare::natural_number_map<unsigned, TagT> _location_to_tag;
 
         flare::robin_set<unsigned> _delete_set;
-        natural_number_set<unsigned> _empty_slots;
+        flare::natural_number_set<unsigned> _empty_slots;
 
         bool _support_eager_delete =
                 false;  // Enables in-graph, requires more space
