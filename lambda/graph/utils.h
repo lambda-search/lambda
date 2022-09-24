@@ -9,28 +9,20 @@
 
 #include <immintrin.h>
 #include <fcntl.h>
-#include <algorithm>
 #include <errno.h>
 #include <cassert>
 #include <cstdlib>
-#include <cstring>
-#include <fstream>
-#include <iostream>
 #include <limits.h>
 
 #include <string>
 #include <memory>
-#include <random>
 #include <set>
 #include <sstream>
-#include <cstring>
 #include <algorithm>
-#include <cassert>
 #include <chrono>
 #include <cmath>
 #include <cstdio>
 #include <cstring>
-#include <fcntl.h>
 #include <fstream>
 #include <iostream>
 #include <queue>
@@ -41,6 +33,8 @@
 #include <flare/base/profile.h>
 #include <flare/base/result_status.h>
 #include "lambda/common/math_utils.h"
+#include <flare/files/sequential_read_file.h>
+#include <flare/files/sequential_write_file.h>
 
 #ifndef FLARE_PLATFORM_OSX
 #include <malloc.h>
@@ -100,6 +94,7 @@ namespace lambda {
             return flare::result_status(-1, std::string("Failed to open file ") + filename +
                                             " for write because: " + buff);
         }
+        return flare::result_status::success();
     }
 
     static const size_t MAX_SIZE_OF_STREAMBUF = 2LL * 1024 * 1024 * 1024;
@@ -176,10 +171,14 @@ namespace lambda {
 
     inline flare::result_status load_truthset(const std::string &bin_file, uint32_t *&ids,
                                               float *&dists, size_t &npts, size_t &dim) {
-        uint64_t read_blk_size = 64 * 1024 * 1024;
-        cached_ifstream reader(bin_file, read_blk_size);
+        flare::sequential_read_file reader;
+        auto rs = reader.open(bin_file);
+        if(!rs.is_ok()) {
+            return rs;
+        }
         FLARE_LOG(INFO) << "Reading truthset file " << bin_file.c_str() << " ...";
-        size_t actual_file_size = reader.get_file_size();
+        std::error_code ec;
+        size_t actual_file_size = flare::file_size(bin_file, ec);
 
         int npts_i32, dim_i32;
         reader.read((char *) &npts_i32, sizeof(int));
@@ -229,10 +228,13 @@ namespace lambda {
     inline flare::result_status prune_truthset_for_range(
             const std::string &bin_file, float range,
             std::vector<std::vector<uint32_t>> &groundtruth, size_t &npts) {
-        uint64_t read_blk_size = 64 * 1024 * 1024;
-        cached_ifstream reader(bin_file, read_blk_size);
+        flare::sequential_read_file reader;
+        auto rs = reader.open(bin_file);
+        if(!rs.is_ok()) {
+            return rs;
+        }
         FLARE_LOG(INFO) << "Reading truthset file " << bin_file.c_str() << "... ";
-        size_t actual_file_size = reader.get_file_size();
+        size_t actual_file_size = flare::file_size(bin_file);
 
         int npts_i32, dim_i32;
         reader.read((char *) &npts_i32, sizeof(int));
@@ -295,11 +297,17 @@ namespace lambda {
     inline flare::result_status load_range_truthset(const std::string &bin_file,
                                                     std::vector<std::vector<uint32_t>> &groundtruth,
                                                     uint64_t &gt_num) {
-        uint64_t read_blk_size = 64 * 1024 * 1024;
-        cached_ifstream reader(bin_file, read_blk_size);
-        FLARE_LOG(INFO) << "Reading truthset file " << bin_file.c_str() << "... "
-                        << std::flush;
-        size_t actual_file_size = reader.get_file_size();
+        flare::sequential_read_file reader;
+        auto rs = reader.open(bin_file);
+        if(!rs.is_ok()) {
+            return rs;
+        }
+        FLARE_LOG(INFO) << "Reading truthset file " << bin_file.c_str() << "... ";
+        std::error_code ec;
+        size_t actual_file_size = flare::file_size(bin_file, ec);
+        if(ec) {
+            return flare::result_status::from_error_code(ec);
+        }
 
         int npts_u32, total_u32;
         reader.read((char *) &npts_u32, sizeof(int));
@@ -442,11 +450,16 @@ namespace lambda {
 
     // plain saves data as npts X ndims array into filename
     template<typename T>
-    void save_Tvecs(const char *filename, T *data, size_t npts, size_t ndims) {
+    flare::result_status save_Tvecs(const char *filename, T *data, size_t npts, size_t ndims) {
         std::string fname(filename);
 
         // create cached ofstream with 64MB cache
-        cached_ofstream writer(fname, 64 * 1048576);
+        flare::sequential_write_file writer;
+
+        auto rs = writer.open(fname);
+        if(!rs.is_ok()) {
+            return rs;
+        }
 
         unsigned dims_u32 = (unsigned) ndims;
 
@@ -459,6 +472,7 @@ namespace lambda {
             T *cur_pt = data + i * ndims;
             writer.write((char *) cur_pt, ndims * sizeof(T));
         }
+        return flare::result_status::success();
     }
 
     template<typename T>
@@ -466,11 +480,11 @@ namespace lambda {
                                                  T *data, size_t npts,
                                                  size_t ndims, size_t aligned_dim,
                                                  size_t offset = 0) {
-        std::ofstream writer;  //(filename, std::ios::binary | std::ios::out);
-        open_file_to_write(writer, filename);
+        flare::sequential_write_file writer;  //(filename, std::ios::binary | std::ios::out);
+        writer.open(filename, false);
         int npts_i32 = (int) npts, ndims_i32 = (int) ndims;
         uint64_t bytes_written = 2 * sizeof(uint32_t) + npts * ndims * sizeof(T);
-        writer.seekp(offset, writer.beg);
+        writer.reset(offset);
         writer.write((char *) &npts_i32, sizeof(int));
         writer.write((char *) &ndims_i32, sizeof(int));
         for (size_t i = 0; i < npts; i++) {

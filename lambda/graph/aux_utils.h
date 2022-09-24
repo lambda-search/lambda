@@ -66,15 +66,15 @@ namespace lambda {
             unsigned num_queries, std::vector<std::vector<uint32_t>> &groundtruth,
             std::vector<std::vector<uint32_t>> &our_results);
 
-    FLARE_EXPORT flare::result_status read_idmap(const std::string &fname,
+    [[nodiscard]] FLARE_EXPORT flare::result_status read_idmap(const std::string &fname,
                                  std::vector<unsigned> &ivecs);
 
     template<typename T>
-    FLARE_EXPORT std::pair<flare::result_status,T*> load_warmup(const std::string &cache_warmup_file,
+    [[nodiscard]] FLARE_EXPORT std::pair<flare::result_status,T*> load_warmup(const std::string &cache_warmup_file,
                                 uint64_t &warmup_num, uint64_t warmup_dim,
                                 uint64_t warmup_aligned_dim);
 
-    FLARE_EXPORT int merge_shards(const std::string &vamana_prefix,
+    [[nodiscard]] FLARE_EXPORT flare::result_status merge_shards(const std::string &vamana_prefix,
                                   const std::string &vamana_suffix,
                                   const std::string &idmaps_prefix,
                                   const std::string &idmaps_suffix,
@@ -88,7 +88,7 @@ namespace lambda {
             lambda::Metric &distMetric);
 
     template<typename T>
-    FLARE_EXPORT int build_merged_vamana_index(
+    [[nodiscard]] FLARE_EXPORT flare::result_status build_merged_vamana_index(
             std::string base_file, lambda::Metric _compareMetric, unsigned L,
             unsigned R, double sampling_rate, double ram_budget,
             std::string mem_index_path, std::string medoids_file,
@@ -101,14 +101,14 @@ namespace lambda {
             uint32_t nthreads, uint32_t start_bw = 2);
 
     template<typename T>
-    FLARE_EXPORT flare::result_status build_disk_index(const char *dataFilePath,
+    [[nodiscard]] FLARE_EXPORT flare::result_status build_disk_index(const char *dataFilePath,
                                       const char *indexFilePath,
                                       const char *indexBuildParameters,
                                       lambda::Metric _compareMetric,
                                       bool use_opq = false);
 
     template<typename T>
-    FLARE_EXPORT flare::result_status create_disk_layout(
+    [[nodiscard]] FLARE_EXPORT flare::result_status create_disk_layout(
             const std::string base_file, const std::string mem_index_file,
             const std::string output_file,
             const std::string reorder_data_file = std::string(""));

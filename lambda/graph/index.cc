@@ -89,6 +89,7 @@ namespace lambda {
         _inserted_into_pool_rs = new flare::robin_set<unsigned>();
         _inserted_into_pool_rs->reserve(l_to_use * 20);
         _inserted_into_pool_bs = new flare::dynamic_bitset<>();
+        return flare::result_status::success();
     }
 
     template<typename T>
@@ -213,7 +214,7 @@ namespace lambda {
         uint32_t num_scratch_spaces = num_threads_srch + num_threads_indx;
         uint32_t search_l = searchParams.Get<uint32_t>("L");
 
-        initialize_query_scratch(num_scratch_spaces, search_l, _indexingQueueSize,
+        _status = initialize_query_scratch(num_scratch_spaces, search_l, _indexingQueueSize,
                                  _indexingRange, dim);
     }
 
@@ -315,15 +316,19 @@ namespace lambda {
     }
 
     template<typename T, typename TagT>
-    void Index<T, TagT>::initialize_query_scratch(uint32_t num_threads,
+    flare::result_status Index<T, TagT>::initialize_query_scratch(uint32_t num_threads,
                                                   uint32_t search_l,
                                                   uint32_t indexing_l, uint32_t r,
                                                   size_t dim) {
         for (uint32_t i = 0; i < num_threads; i++) {
             in_mem_query_scratch<T> scratch;
-            scratch.setup(search_l, indexing_l, r, dim);
+            auto rs = scratch.setup(search_l, indexing_l, r, dim);
+            if(!rs.is_ok()) {
+                return rs;
+            }
             _query_scratch.push(scratch);
         }
+        return flare::result_status::success();
     }
 
     template<typename T, typename TagT>
@@ -361,11 +366,10 @@ namespace lambda {
     // 4 byte unsigned)
     template<typename T, typename TagT>
     uint64_t Index<T, TagT>::save_graph(std::string graph_file) {
-        std::ofstream out;
-        open_file_to_write(out, graph_file);
-
+        flare::sequential_write_file out;
+        out.open(graph_file, false);
         uint64_t file_offset = 0;  // we will use this if we want
-        out.seekp(file_offset, out.beg);
+        out.reset(file_offset);
         uint64_t index_size = 24;
         uint32_t max_degree = 0;
         out.write((char *) &index_size, sizeof(uint64_t));
@@ -382,7 +386,7 @@ namespace lambda {
                          : max_degree;
             index_size += (uint64_t) (sizeof(unsigned) * (GK + 1));
         }
-        out.seekp(file_offset, out.beg);
+        out.reset(file_offset);
         out.write((char *) &index_size, sizeof(uint64_t));
         out.write((char *) &max_degree, sizeof(uint32_t));
         out.close();
@@ -456,27 +460,31 @@ namespace lambda {
 
 
     template<typename T, typename TagT>
-    size_t Index<T, TagT>::load_tags(const std::string tag_filename) {
+    flare::result_status Index<T, TagT>::load_tags(const std::string tag_filename, size_t &ret) {
         if (_enable_tags && !file_exists(tag_filename)) {
             FLARE_LOG(ERROR) << "Tag file provided does not exist!";
-            FLARE_CHECK(false) << "Tag file provided does not exist!";
+            return flare::result_status(-1, "Tag file provided does not exist!");
         }
         if (!_enable_tags) {
             FLARE_LOG(INFO) << "Tags not loaded as tags not enabled.";
-            return 0;
+            ret =  0;
+            return flare::result_status::success();
         }
 
         size_t file_dim, file_num_points;
         TagT *tag_data;
-        lambda::binary_file::load_bin<TagT>(std::string(tag_filename), tag_data, file_num_points,
+        auto rs = lambda::binary_file::load_bin<TagT>(std::string(tag_filename), tag_data, file_num_points,
                                             file_dim);
+        if(!rs.is_ok()) {
+            return rs;
+        }
         if (file_dim != 1) {
             std::stringstream stream;
             stream << "ERROR: Found " << file_dim << " dimensions for tags,"
                    << "but tag file must have 1 dimension.\n";
             FLARE_LOG(ERROR) << stream.str();
             delete[] tag_data;
-            FLARE_CHECK(false) << stream.str();
+            return flare::result_status(-1, stream.str());
         }
 
         size_t num_data_points =
@@ -492,7 +500,8 @@ namespace lambda {
         }
         FLARE_LOG(INFO) << "Tags loaded.";
         delete[] tag_data;
-        return file_num_points;
+        ret =  file_num_points;
+        return flare::result_status::success();
     }
 
     template<typename T, typename TagT>
@@ -530,15 +539,19 @@ namespace lambda {
 
 
     template<typename T, typename TagT>
-    size_t Index<T, TagT>::load_delete_set(const std::string &filename) {
+    flare::result_status Index<T, TagT>::load_delete_set(const std::string &filename, size_t &ret) {
         std::unique_ptr<uint32_t[]> delete_list;
         size_t npts, ndim;
-        lambda::binary_file::load_bin<uint32_t>(filename, delete_list, npts, ndim);
+        auto rs = lambda::binary_file::load_bin<uint32_t>(filename, delete_list, npts, ndim);
+        if(!rs.is_ok()) {
+            return rs;
+        }
         assert(ndim == 1);
         for (uint32_t i = 0; i < npts; i++) {
             _delete_set.insert(delete_list[i]);
         }
-        return npts;
+        ret =  npts;
+        return flare::result_status::success();
     }
 
     // load the index from file and update the max_degree, cur (navigating
@@ -552,7 +565,6 @@ namespace lambda {
         _has_built = true;
 
         size_t tags_file_num_pts = 0, graph_num_pts = 0, data_file_num_pts = 0;
-
         if (!_save_as_one_file) {
             // For DLVS Store, we will not support saving the index in multiple files.
             std::string data_file = std::string(filename) + ".data";
@@ -561,10 +573,17 @@ namespace lambda {
             std::string graph_file = std::string(filename);
             data_file_num_pts = load_data(data_file);
             if (file_exists(delete_set_file)) {
-                load_delete_set(delete_set_file);
+                size_t tmp;
+                auto rs = load_delete_set(delete_set_file, tmp);
+                if(!rs.is_ok()) {
+                    return rs;
+                }
             }
             if (_enable_tags) {
-                tags_file_num_pts = load_tags(tags_file);
+                auto rs = load_tags(tags_file, tags_file_num_pts);
+                if(!rs.is_ok()) {
+                    return rs;
+                }
             }
             graph_num_pts = load_graph(graph_file, data_file_num_pts);
 
@@ -609,9 +628,10 @@ namespace lambda {
         // are known only at load time, hence this check and the call to
         // initialize_q_s().
         if (_query_scratch.size() == 0) {
-            initialize_query_scratch(num_threads, search_l, search_l,
+            _status = initialize_query_scratch(num_threads, search_l, search_l,
                                      (uint32_t) _max_range_of_loaded_graph, _dim);
         }
+        return flare::result_status::success();
     }
 
 
@@ -1585,7 +1605,7 @@ namespace lambda {
                                                const size_t num_points_to_load,
                                                Parameters &parameters, const char *tag_filename) {
         std::vector<TagT> tags;
-
+        flare::result_status rs;
         if (_enable_tags) {
             if (tag_filename == nullptr) {
                 return flare::result_status(-1, "Tag filename is null, while _enable_tags is set");
@@ -1595,7 +1615,10 @@ namespace lambda {
                                     << " for vamana index build";
                     TagT *tag_data = nullptr;
                     size_t npts, ndim;
-                    lambda::binary_file::load_bin(tag_filename, tag_data, npts, ndim);
+                    rs = lambda::binary_file::load_bin(tag_filename, tag_data, npts, ndim);
+                    if(!rs.is_ok()) {
+                        return rs;
+                    }
                     if (npts < num_points_to_load) {
                         std::stringstream sstream;
                         sstream << "Loaded " << npts
@@ -2282,9 +2305,9 @@ namespace lambda {
     }
 
     template<typename T, typename TagT>
-    int Index<T, TagT>::reserve_location() {
+    flare::result_status Index<T, TagT>::reserve_location(int &ret) {
         if (_nd >= _max_points) {
-            return -1;
+            return flare::result_status(-1, "overflow");
         }
         unsigned location;
         if (_data_compacted && _empty_slots.is_empty()) {
@@ -2300,11 +2323,15 @@ namespace lambda {
             assert(_empty_slots.size() + _nd == _max_points);
 
             auto r = _empty_slots.pop_any(location);
+            if(!r) {
+                return flare::result_status(-1, "no slots");
+            }
             _delete_set.erase(location);
         }
 
         ++_nd;
-        return location;
+        ret = location;
+        return flare::result_status::success();
     }
 
     template<typename T, typename TagT>
@@ -2407,15 +2434,16 @@ namespace lambda {
     }
 
     template<typename T, typename TagT>
-    int Index<T, TagT>::insert_point(const T *point, const TagT tag) {
+    flare::result_status Index<T, TagT>::insert_point(const T *point, const TagT tag) {
         assert(_has_built);
 
         std::shared_lock<std::shared_timed_mutex> shared_ul(_update_lock);
         std::unique_lock<std::shared_timed_mutex> tl(_tag_lock);
 
         // Find a vacant location in the data array to insert the new point
-        auto location = reserve_location();
-        if (location == -1) {
+        int location;
+        auto rs =  reserve_location(location);
+        if (!rs.is_ok()) {
 #if EXPAND_IF_FULL
             tl.unlock();
             shared_ul.unlock();
@@ -2443,7 +2471,7 @@ namespace lambda {
                   -1, __FUNCSIG__, __FILE__, __LINE__);
             }
 #else
-            return -1;
+            return rs;
 #endif
         }
 
@@ -2451,7 +2479,7 @@ namespace lambda {
         if (_enable_tags) {
             if (_tag_to_location.find(tag) != _tag_to_location.end()) {
                 release_location(location);
-                return -1;
+                return flare::result_status(-1, "already exists");
             }
 
             _tag_to_location[tag] = location;
@@ -2481,7 +2509,7 @@ namespace lambda {
                                        scratch.des(), scratch.best_l_nodes(),
                                        scratch.inserted_into_pool_rs(),
                                        scratch.inserted_into_pool_bs());
-        return 0;
+        return flare::result_status::success();
     }
 
     template<typename T, typename TagT>

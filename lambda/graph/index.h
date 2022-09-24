@@ -146,11 +146,11 @@ namespace lambda {
 
         // Saves graph, data, metadata and associated tags.
         FLARE_EXPORT flare::result_status save(const char *filename,
-                               bool compact_before_save = false);
+                                               bool compact_before_save = false);
 
         // Load functions
         FLARE_EXPORT flare::result_status load(const char *index_file, uint32_t num_threads,
-                               uint32_t search_l);
+                                               uint32_t search_l);
 
         // get some private variables
         FLARE_EXPORT size_t get_num_points();
@@ -165,14 +165,14 @@ namespace lambda {
 
         // Batch build from a file. Optionally pass tags file.
         FLARE_EXPORT flare::result_status build(const char *filename,
-                                const size_t num_points_to_load,
-                                Parameters &parameters,
-                                const char *tag_filename);
+                                                const size_t num_points_to_load,
+                                                Parameters &parameters,
+                                                const char *tag_filename);
 
         // Batch build from a data array, which must pad vectors to aligned_dim
         FLARE_EXPORT flare::result_status build(const T *data, const size_t num_points_to_load,
-                                Parameters &parameters,
-                                const std::vector<TagT> &tags);
+                                                Parameters &parameters,
+                                                const std::vector<TagT> &tags);
 
         // Set starting point of an index before inserting any points incrementally
         FLARE_EXPORT flare::result_status set_start_point(T *data);
@@ -201,7 +201,7 @@ namespace lambda {
                                              std::vector<T *> &res_vectors);
 
         // Will fail if tag already in the index
-        FLARE_EXPORT int insert_point(const T *point, const TagT tag);
+        FLARE_EXPORT flare::result_status insert_point(const T *point, const TagT tag);
 
         // call this before issuing deletions to sets relevant flags
         FLARE_EXPORT int enable_delete();
@@ -215,7 +215,7 @@ namespace lambda {
         // if tag not found. Do not call if _eager_delete was called earlier and
         // data was not consolidated.
         FLARE_EXPORT flare::result_status lazy_delete(const std::vector<TagT> &tags,
-                                      std::vector<TagT> &failed_tags);
+                                                      std::vector<TagT> &failed_tags);
 
         // Call after a series of lazy deletions
         // Returns number of live points left after consolidation
@@ -268,7 +268,7 @@ namespace lambda {
 
         // Use after _data and _nd have been populated
         flare::result_status build_with_data_populated(Parameters &parameters,
-                                       const std::vector<TagT> &tags);
+                                                       const std::vector<TagT> &tags);
 
         // generates 1 frozen point that will never be deleted from the graph
         // This is not visible to the user
@@ -350,7 +350,7 @@ namespace lambda {
         void link(Parameters &parameters);
 
         // Acquire _tag_lock before calling
-        int reserve_location();
+        [[nodiscard]] flare::result_status reserve_location(int &ret);
 
         size_t release_location(int location);
 
@@ -375,8 +375,8 @@ namespace lambda {
                             size_t i, const unsigned &range, const unsigned &maxc,
                             const float &alpha);
 
-        void initialize_query_scratch(uint32_t num_threads, uint32_t search_l,
-                                      uint32_t indexing_l, uint32_t r, size_t dim);
+        [[nodiscard]] flare::result_status initialize_query_scratch(uint32_t num_threads, uint32_t search_l,
+                                                                    uint32_t indexing_l, uint32_t r, size_t dim);
 
         // Do not call without acquiring appropriate locks
         // call public member functions save and load to invoke these.
@@ -393,11 +393,12 @@ namespace lambda {
 
         FLARE_EXPORT size_t load_data(std::string filename0);
 
-        FLARE_EXPORT size_t load_tags(const std::string tag_file_name);
+        FLARE_EXPORT [[nodiscard]] flare::result_status load_tags(const std::string tag_file_name, size_t &n);
 
-        FLARE_EXPORT size_t load_delete_set(const std::string &filename);
+        FLARE_EXPORT [[nodiscard]] flare::result_status load_delete_set(const std::string &filename, size_t &ret);
 
     private:
+        flare::result_status _status;
         // vector_distance functions
         Metric _dist_metric = lambda::L2;
         vector_distance<T> *_distance = nullptr;

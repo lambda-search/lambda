@@ -26,7 +26,7 @@
 #include "lambda/common/math_utils.h"
 #include "index.h"
 #include "parameters.h"
-#include "partition_and_pq.h"
+#include "lambda/graph/partition_and_pq.h"
 
 // block size for reading/ processing large files and matrices in blocks
 #define BLOCK_SIZE 5000000
@@ -36,8 +36,8 @@ namespace lambda {
     template<typename T>
     void gen_random_slice(const std::string base_file,
                           const std::string output_prefix, double sampling_rate) {
-        uint64_t read_blk_size = 64 * 1024 * 1024;
-        cached_ifstream base_reader(base_file.c_str(), read_blk_size);
+        flare::sequential_read_file base_reader;
+        auto rs = base_reader.open(base_file.c_str());
         std::ofstream sample_writer(std::string(output_prefix + "_data.bin").c_str(),
                                     std::ios::binary);
         std::ofstream sample_id_writer(
@@ -103,10 +103,9 @@ namespace lambda {
         uint32_t npts32, ndims32;
         std::vector<std::vector<float>> sampled_vectors;
 
-        // amount to read in one shot
-        uint64_t read_blk_size = 64 * 1024 * 1024;
         // create cached reader + writer
-        cached_ifstream base_reader(data_file.c_str(), read_blk_size);
+        flare::sequential_read_file base_reader;
+        base_reader.open(data_file.c_str());
 
         // metadata: npts, ndims
         base_reader.read((char *) &npts32, sizeof(unsigned));
@@ -141,8 +140,8 @@ namespace lambda {
         }
     }
 
-// same as above, but samples from the matrix inputdata instead of a file of
-// npts*ndims to return sampled_data of size slice_size*ndims.
+    // same as above, but samples from the matrix inputdata instead of a file of
+    // npts*ndims to return sampled_data of size slice_size*ndims.
     template<typename T>
     void gen_random_slice(const T *inputdata, size_t npts, size_t ndims,
                           double p_val, float *&sampled_data, size_t &slice_size) {
@@ -595,8 +594,8 @@ namespace lambda {
                                                       std::string pq_pivots_path,
                                                       std::string pq_compressed_vectors_path,
                                                       bool use_opq) {
-        uint64_t read_blk_size = 64 * 1024 * 1024;
-        cached_ifstream base_reader(data_file, read_blk_size);
+        flare::sequential_read_file base_reader;
+        base_reader.open(data_file);
         uint32_t npts32;
         uint32_t basedim32;
         base_reader.read((char *) &npts32, sizeof(uint32_t));
@@ -880,10 +879,8 @@ namespace lambda {
     int shard_data_into_clusters(const std::string data_file, float *pivots,
                                  const size_t num_centers, const size_t dim,
                                  const size_t k_base, std::string prefix_path) {
-        uint64_t read_blk_size = 64 * 1024 * 1024;
-        //  uint64_t write_blk_size = 64 * 1024 * 1024;
-        // create cached reader + writer
-        cached_ifstream base_reader(data_file, read_blk_size);
+        flare::sequential_read_file base_reader;
+        base_reader.open(data_file);
         uint32_t npts32;
         uint32_t basedim32;
         base_reader.read((char *) &npts32, sizeof(uint32_t));
@@ -980,10 +977,8 @@ namespace lambda {
                                           float *pivots, const size_t num_centers,
                                           const size_t dim, const size_t k_base,
                                           std::string prefix_path) {
-        uint64_t read_blk_size = 64 * 1024 * 1024;
-        //  uint64_t write_blk_size = 64 * 1024 * 1024;
-        // create cached reader + writer
-        cached_ifstream base_reader(data_file, read_blk_size);
+        flare::sequential_read_file base_reader;
+        base_reader.open(data_file);
         uint32_t npts32;
         uint32_t basedim32;
         base_reader.read((char *) &npts32, sizeof(uint32_t));
@@ -1066,10 +1061,8 @@ namespace lambda {
     flare::result_status retrieve_shard_data_from_ids(const std::string data_file,
                                                       std::string idmap_filename,
                                                       std::string data_filename) {
-        uint64_t read_blk_size = 64 * 1024 * 1024;
-        //  uint64_t write_blk_size = 64 * 1024 * 1024;
-        // create cached reader + writer
-        cached_ifstream base_reader(data_file, read_blk_size);
+        flare::sequential_read_file base_reader;
+        base_reader.open(data_file);
         uint32_t npts32;
         uint32_t basedim32;
         base_reader.read((char *) &npts32, sizeof(uint32_t));

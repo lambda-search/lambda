@@ -14,6 +14,9 @@
 #include <string>
 #include <vector>
 #include <flare/files/filesystem.h>
+#include <flare/files/sequential_read_file.h>
+#include <flare/files/sequential_write_file.h>
+
 
 #if defined(RELEASE_UNUSED_TCMALLOC_MEMORY_AT_CHECKPOINTS) && \
     defined(DISKANN_BUILD)
@@ -22,7 +25,6 @@
 
 #include "flare/log/logging.h"
 #include "aux_utils.h"
-#include "cached_io.h"
 #include "index.h"
 #include "mkl.h"
 #include "omp.h"
@@ -52,7 +54,11 @@ namespace lambda {
         }
         size_t index_ending_offset = metadata[nr - 1];
         uint64_t read_blk_size = 64 * 1024 * 1024;
-        cached_ofstream writer(index_file, read_blk_size);
+        flare::sequential_write_file writer;
+        rs = writer.open(index_file);
+        if(!rs.is_ok()) {
+            return rs;
+        }
         std::error_code ec;
         uint64_t check_file_size = flare::file_size(index_file, ec);
         if (check_file_size != index_ending_offset) {
@@ -62,8 +68,12 @@ namespace lambda {
             return flare::result_status(-1, stream.str());
         }
 
-        cached_ifstream reader(new_file, read_blk_size);
-        size_t fsize = reader.get_file_size();
+        flare::sequential_read_file reader;
+        rs = reader.open(new_file);
+        if(!rs.is_ok()) {
+            return rs;
+        }
+        size_t fsize = flare::file_size(new_file, ec);
         if (fsize == 0) {
             std::stringstream stream;
             stream << "Error, new file specified is empty. Not appending. \n";
@@ -340,7 +350,7 @@ namespace lambda {
         return flare::result_status::success();
     }
 
-    int merge_shards(const std::string &vamana_prefix,
+    flare::result_status merge_shards(const std::string &vamana_prefix,
                      const std::string &vamana_suffix,
                      const std::string &idmaps_prefix,
                      const std::string &idmaps_suffix, const size_t nshards,
@@ -352,8 +362,11 @@ namespace lambda {
         for (uint64_t shard = 0; shard < nshards; shard++) {
             vamana_names[shard] =
                     vamana_prefix + std::to_string(shard) + vamana_suffix;
-            read_idmap(idmaps_prefix + std::to_string(shard) + idmaps_suffix,
+            auto rs = read_idmap(idmaps_prefix + std::to_string(shard) + idmaps_suffix,
                        idmaps[shard]);
+            if(!rs.is_ok()) {
+                return rs;
+            }
         }
 
         // find max node id
@@ -386,9 +399,12 @@ namespace lambda {
         FLARE_LOG(INFO) << "Finished computing node -> shards map";
 
         // create cached vamana readers
-        std::vector<cached_ifstream> vamana_readers(nshards);
+        std::vector<flare::sequential_read_file> vamana_readers(nshards);
         for (uint64_t i = 0; i < nshards; i++) {
-            vamana_readers[i].open(vamana_names[i], BUFFER_SIZE_FOR_CACHED_IO);
+            auto rs = vamana_readers[i].open(vamana_names[i]);
+            if(!rs.is_ok()) {
+                return rs;
+            }
             size_t expected_file_size;
             vamana_readers[i].read((char *) &expected_file_size, sizeof(uint64_t));
         }
@@ -399,9 +415,11 @@ namespace lambda {
         // frozen_point info
 
         // create cached vamana writers
-        cached_ofstream merged_vamana_writer(output_vamana,
-                                             BUFFER_SIZE_FOR_CACHED_IO);
-
+        flare::sequential_write_file merged_vamana_writer;
+        auto rs = merged_vamana_writer.open(output_vamana);
+        if(!rs.is_ok()) {
+            return rs;
+        }
         size_t merged_index_size =
                 vamana_metadata_size;  // we initialize the size of the merged index to
         // the metadata size
@@ -517,11 +535,11 @@ namespace lambda {
         merged_vamana_writer.write((char *) &merged_index_size, sizeof(uint64_t));
 
         FLARE_LOG(INFO) << "Finished merge";
-        return 0;
+        return flare::result_status::success();
     }
 
     template<typename T>
-    int build_merged_vamana_index(std::string base_file,
+    flare::result_status build_merged_vamana_index(std::string base_file,
                                   lambda::Metric compareMetric, unsigned L,
                                   unsigned R, double sampling_rate,
                                   double ram_budget, std::string mem_index_path,
@@ -553,12 +571,15 @@ namespace lambda {
             _pvamanaIndex->save(mem_index_path.c_str());
             std::remove(medoids_file.c_str());
             std::remove(centroids_file.c_str());
-            return 0;
+            return flare::result_status::success();
         }
         std::string merged_index_prefix = mem_index_path + "_tempFiles";
         int num_parts;
-        partition_with_ram_budget<T>(base_file, sampling_rate, ram_budget,
+        auto rs = partition_with_ram_budget<T>(base_file, sampling_rate, ram_budget,
                                      2 * R / 3, merged_index_prefix, 2, &num_parts);
+        if(!rs.is_ok()) {
+            return rs;
+        }
 
         std::string cur_centroid_filepath = merged_index_prefix + "_centroids.bin";
         std::rename(cur_centroid_filepath.c_str(), centroids_file.c_str());
@@ -570,8 +591,11 @@ namespace lambda {
             std::string shard_ids_file = merged_index_prefix + "_subshard-" +
                                          std::to_string(p) + "_ids_uint32.bin";
 
-            retrieve_shard_data_from_ids<T>(base_file, shard_ids_file,
+            rs = retrieve_shard_data_from_ids<T>(base_file, shard_ids_file,
                                             shard_base_file);
+            if(!rs.is_ok()) {
+                return rs;
+            }
 
             std::string shard_index_file =
                     merged_index_prefix + "_subshard-" + std::to_string(p) + "_mem.index";
@@ -596,10 +620,12 @@ namespace lambda {
             std::remove(shard_base_file.c_str());
         }
 
-        lambda::merge_shards(merged_index_prefix + "_subshard-", "_mem.index",
+        rs = lambda::merge_shards(merged_index_prefix + "_subshard-", "_mem.index",
                              merged_index_prefix + "_subshard-", "_ids_uint32.bin",
                              num_parts, R, mem_index_path, medoids_file);
-
+        if(!rs.is_ok()) {
+            return rs;
+        }
         // delete tempFiles
         for (int p = 0; p < num_parts; p++) {
             std::string shard_base_file =
@@ -615,7 +641,7 @@ namespace lambda {
             std::remove(shard_index_file.c_str());
             std::remove(shard_index_file_data.c_str());
         }
-        return 0;
+        return flare::result_status::success();
     }
 
     // General purpose support for DiskANN interface
@@ -681,10 +707,11 @@ namespace lambda {
                                             const std::string reorder_data_file) {
         unsigned npts, ndims;
 
-        // amount to read or write in one shot
-        uint64_t read_blk_size = 64 * 1024 * 1024;
-        uint64_t write_blk_size = read_blk_size;
-        cached_ifstream base_reader(base_file, read_blk_size);
+        flare::sequential_read_file base_reader;
+        auto rs = base_reader.open(base_file);
+        if(!rs.is_ok()) {
+            return rs;
+        }
         base_reader.read((char *) &npts, sizeof(uint32_t));
         base_reader.read((char *) &ndims, sizeof(uint32_t));
 
@@ -726,7 +753,11 @@ namespace lambda {
         size_t actual_file_size = flare::file_size(mem_index_file, ec);
         FLARE_LOG(INFO) << "Vamana index file size=" << actual_file_size;
         std::ifstream vamana_reader(mem_index_file, std::ios::binary);
-        cached_ofstream diskann_writer(output_file, write_blk_size);
+        flare::sequential_write_file diskann_writer;
+        rs = diskann_writer.open(output_file);
+        if(!rs.is_ok()) {
+            return rs;
+        }
 
         // metadata: width, medoid
         unsigned width_u32, medoid_u32;
@@ -881,7 +912,7 @@ namespace lambda {
             }
         }
         diskann_writer.close();
-        auto rs = lambda::binary_file::save_bin<uint64_t>(output_file, output_file_meta.data(),
+        rs = lambda::binary_file::save_bin<uint64_t>(output_file, output_file_meta.data(),
                                                           output_file_meta.size(), 1, 0);
         FLARE_LOG(INFO) << "Output disk index file written to " << output_file;
         return rs;
@@ -1037,17 +1068,24 @@ namespace lambda {
 
             FLARE_LOG(INFO) << "Compressing base for disk-PQ into " << disk_pq_dims
                             << " chunks ";
-            generate_pq_pivots(train_data, train_size, (uint32_t) dim, 256,
+            auto rs = generate_pq_pivots(train_data, train_size, (uint32_t) dim, 256,
                                (uint32_t) disk_pq_dims, NUM_KMEANS_REPS,
                                disk_pq_pivots_path, false);
-            if (compareMetric == lambda::Metric::INNER_PRODUCT)
-                generate_pq_data_from_pivots<float>(
+            if(!rs.is_ok()) {
+                return rs;
+            }
+            if (compareMetric == lambda::Metric::INNER_PRODUCT) {
+                rs = generate_pq_data_from_pivots<float>(
                         data_file_to_use.c_str(), 256, (uint32_t) disk_pq_dims,
                         disk_pq_pivots_path, disk_pq_compressed_vectors_path);
-            else
-                generate_pq_data_from_pivots<T>(
+            } else {
+                rs = generate_pq_data_from_pivots<T>(
                         data_file_to_use.c_str(), 256, (uint32_t) disk_pq_dims,
                         disk_pq_pivots_path, disk_pq_compressed_vectors_path);
+            }
+            if(!rs.is_ok()) {
+                return rs;
+            }
         }
         FLARE_LOG(INFO) << "Training data loaded of size " << train_size;
 
@@ -1059,17 +1097,24 @@ namespace lambda {
         if (use_opq)  // we also do not center the data for OPQ
             make_zero_mean = false;
 
+        flare::result_status rs;
         if (!use_opq) {
-            generate_pq_pivots(train_data, train_size, (uint32_t) dim, 256,
+            rs = generate_pq_pivots(train_data, train_size, (uint32_t) dim, 256,
                                (uint32_t) num_pq_chunks, NUM_KMEANS_REPS,
                                pq_pivots_path, make_zero_mean);
         } else {
-            generate_opq_pivots(train_data, train_size, (uint32_t) dim, 256,
+            rs = generate_opq_pivots(train_data, train_size, (uint32_t) dim, 256,
                                 (uint32_t) num_pq_chunks, pq_pivots_path, make_zero_mean);
         }
-        generate_pq_data_from_pivots<T>(data_file_to_use.c_str(), 256,
+        if(!rs.is_ok()) {
+            return rs;
+        }
+        rs = generate_pq_data_from_pivots<T>(data_file_to_use.c_str(), 256,
                                         (uint32_t) num_pq_chunks, pq_pivots_path,
                                         pq_compressed_vectors_path, use_opq);
+        if(!rs.is_ok()) {
+            return rs;
+        }
 
         delete[] train_data;
 
@@ -1081,21 +1126,27 @@ namespace lambda {
         MallocExtension::instance()->ReleaseFreeMemory();
 #endif
 
-        lambda::build_merged_vamana_index<T>(
+        rs = lambda::build_merged_vamana_index<T>(
                 data_file_to_use.c_str(), lambda::Metric::L2, L, R, p_val,
                 indexing_ram_budget, mem_index_path, medoids_path, centroids_path);
+        if(!rs.is_ok()) {
+            return rs;
+        }
 
         if (!use_disk_pq) {
-            lambda::create_disk_layout<T>(data_file_to_use.c_str(), mem_index_path,
+            rs = lambda::create_disk_layout<T>(data_file_to_use.c_str(), mem_index_path,
                                           disk_index_path);
         } else {
             if (!reorder_data)
-                lambda::create_disk_layout<uint8_t>(disk_pq_compressed_vectors_path,
+                rs = lambda::create_disk_layout<uint8_t>(disk_pq_compressed_vectors_path,
                                                     mem_index_path, disk_index_path);
             else
-                lambda::create_disk_layout<uint8_t>(disk_pq_compressed_vectors_path,
+                rs = lambda::create_disk_layout<uint8_t>(disk_pq_compressed_vectors_path,
                                                     mem_index_path, disk_index_path,
                                                     data_file_to_use.c_str());
+        }
+        if(!rs.is_ok()) {
+            return rs;
         }
 
         double ten_percent_points = std::ceil(points_num * 0.1);
@@ -1175,19 +1226,19 @@ namespace lambda {
             const char *indexBuildParameters, lambda::Metric compareMetric,
             bool use_opq);
 
-    template FLARE_EXPORT int build_merged_vamana_index<int8_t>(
+    template FLARE_EXPORT flare::result_status build_merged_vamana_index<int8_t>(
             std::string base_file, lambda::Metric compareMetric, unsigned L,
             unsigned R, double sampling_rate, double ram_budget,
             std::string mem_index_path, std::string medoids_path,
             std::string centroids_file);
 
-    template FLARE_EXPORT int build_merged_vamana_index<float>(
+    template FLARE_EXPORT flare::result_status build_merged_vamana_index<float>(
             std::string base_file, lambda::Metric compareMetric, unsigned L,
             unsigned R, double sampling_rate, double ram_budget,
             std::string mem_index_path, std::string medoids_path,
             std::string centroids_file);
 
-    template FLARE_EXPORT int build_merged_vamana_index<uint8_t>(
+    template FLARE_EXPORT flare::result_status build_merged_vamana_index<uint8_t>(
             std::string base_file, lambda::Metric compareMetric, unsigned L,
             unsigned R, double sampling_rate, double ram_budget,
             std::string mem_index_path, std::string medoids_path,
