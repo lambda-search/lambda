@@ -1,0 +1,13 @@
+name:  lambda-dev
+channels:
+  - conda-forge
+  - defaults
+  - flare-rpc
+dependencies:
+  - clang # [osx]
+  - clangxx #   [osx]
+  - make
+  - libfaiss_ex =1.7.2
+  - libflare
+  - gtest =1.11.0
+  - gmock =1.11.0

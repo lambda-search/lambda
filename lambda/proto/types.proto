@@ -1,0 +1,65 @@
+syntax = "proto2";
+package lambda;
+option cc_generic_services = true;
+
+
+
+message SnapshotRule {
+    required int32 period_secs = 1;
+    required int32 changed_docs = 2;
+}
+
+enum IndexMetricType {
+    INDEX_METRIC_INNER_PRODUCT = 0; //inner product distance
+    INDEX_METRIC_L2 = 1; //european distance
+    INDEX_METRIC_COSINE = 2; //cosine distance
+    INDEX_METRIC_HAMMING = 3; //hamming distance
+}
+
+enum IndexEngineType {
+    ENGINE_FAISS_VECTOR = 0;
+    ENGINE_FAISS_BINARY = 1;
+    ENGINE_FAISS_RT = 2;
+    ENGINE_HNSWLIB = 3;
+    ENGINE_KDISK = 4;
+    ENGINE_FAISS_VIRTUAL = 6; // faiss Brute force search without an index
+}
+
+message IndexConf {
+    required int32 number_of_shards = 1;
+    required int32 number_of_replicas = 2;
+    required string description = 3;
+    required int32 dimension = 4;
+    required IndexMetricType metric = 5;
+    optional int32 nprobe = 6;
+    repeated SnapshotRule snapshot_rules = 8;
+    optional bool direct_map = 10;
+    optional int32 slowlog_log_slower_than = 11 [default = 1000];
+    optional IndexEngineType engine = 12 [default = ENGINE_FAISS_VECTOR];
+    optional bool tmpfs4vector = 13;
+    optional int64 model_size = 14;
+    optional string model_cksm = 15;
+    optional int64 rebuild_rate_limiter_docs_per_sec = 16;
+    optional int64 memory_of_shards = 17; //byte
+    optional string group = 18;
+    optional int64 version = 19;
+    map<string, FieldMeta> field_metas = 20;
+    map<string, string> options = 21;
+}
+
+message FieldMeta {
+    optional FieldType field_type = 1;
+}
+
+enum FieldType {
+    TYPE_STRING = 0;
+    TYPE_STRING_ARRAY = 1;
+    TYPE_UINT64 = 2;
+}
+
+message IndexShardConf {
+    required string index = 1;
+    required int32 shard_idx = 2;
+    required IndexConf conf = 3;
+    repeated string nodes = 4;
+}

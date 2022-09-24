@@ -1,0 +1,39 @@
+/Applications/CLion.app/Contents/bin/cmake/mac/bin/cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_PREFIX_PATH=~/miniconda3/envs/karabor-dev -G "CodeBlocks - Unix Makefiles" /Users/liyinbin/github/lambda-search/lambda
+bash: /Users/liyinbin/github/lambda-search/lambda/tools/get_project_version.sh: No such file or directory
+-- [32m[carbin] /Users/liyinbin/github/lambda-search/lambda/cmake-build-debug[m
+-- [32m[carbin] /Users/liyinbin/github/lambda-search/lambda/cmake-build-debug;/Users/liyinbin/github/lambda-search/lambda[m
+-----------------------------------
+[33mCreate Library[m:                [36mlambda::proto[m
+-----------------------------------
+-- Found OpenMP_C: -Xclang -fopenmp (found version "4.5") 
+-- Found OpenMP_CXX: -Xclang -fopenmp (found version "4.5") 
+-- Found OpenMP: TRUE (found version "4.5")  
+-- Looking for sgemm_
+-- Looking for sgemm_ - found
+-- Found MKL: /Users/liyinbin/miniconda3/envs/karabor-dev/lib/libmkl_intel_lp64.dylib;/Users/liyinbin/miniconda3/envs/karabor-dev/lib/libmkl_intel_thread.dylib;/Users/liyinbin/miniconda3/envs/karabor-dev/lib/libmkl_core.dylib;/Users/liyinbin/miniconda3/envs/karabor-dev/lib/libiomp5.dylib;-lm;-ldl  
+-----------------------------------
+[33mCreate Library[m:                [36mlambda::ann[m
+-----------------------------------
+--------------- summary ---------------------
+[33mNameSpace[m:                     [36mlambda[m
+[33mVersion[m:                       [36m0.1.0[m
+[33mInstall dir[m:                   [36m/usr/local[m
+[33mPlatform[m:                      [36m[m
+[33mPackage File[m:                  [36m[m
+[33mPckage Type[m:
+[33mCMAKE_MODULE_PATH[m:
+ - [36m/Users/liyinbin/github/lambda-search/lambda/cmake[m
+ - [36m/Users/liyinbin/github/lambda-search/lambda/copts[m
+ - [36m/Users/liyinbin/github/lambda-search/lambda/cmake/modules[m
+ - [36m/Users/liyinbin/github/lambda-search/lambda/cmake/recipes[m
+ - [36m/Users/liyinbin/github/lambda-search/lambda/cmake/recipes[m
+[33mCMAKE_PREFIX_PATH[m:
+ - [36m~/miniconda3/envs/karabor-dev[m
+ - [36m/Users/liyinbin/miniconda3[m
+[33mCARBIN_INCLUDE_DIRS[m:
+ - [36m/Users/liyinbin/github/lambda-search/lambda/cmake-build-debug[m
+ - [36m/Users/liyinbin/github/lambda-search/lambda[m
+-------------------------
+-- Configuring done
+-- Generating done
+-- Build files have been written to: /Users/liyinbin/github/lambda-search/lambda/cmake-build-debug
