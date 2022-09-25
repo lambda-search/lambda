@@ -43,7 +43,6 @@
 #include <unistd.h>
 #include "lambda/common/vector_distance.h"
 #include "flare/log/logging.h"
-#include "lambda/graph/cached_io.h"
 #include <flare/base/profile.h>
 
 namespace lambda {
@@ -77,27 +76,6 @@ namespace lambda {
             return dirCheck ? buffer.st_mode & S_IFDIR : true;
         }
     }
-
-    [[nodiscard]] inline flare::result_status open_file_to_write(std::ofstream &writer,
-                                                                 const std::string &filename) {
-        writer.exceptions(std::ofstream::failbit | std::ofstream::badbit);
-        if (!file_exists(filename))
-            writer.open(filename, std::ios::binary | std::ios::out);
-        else
-            writer.open(filename, std::ios::binary | std::ios::in | std::ios::out);
-
-        if (writer.fail()) {
-            char buff[1024];
-            strerror_r(errno, buff, 1024);
-            FLARE_LOG(ERROR) << std::string("Failed to open file") + filename +
-                                " for write because " + buff;
-            return flare::result_status(-1, std::string("Failed to open file ") + filename +
-                                            " for write because: " + buff);
-        }
-        return flare::result_status::success();
-    }
-
-    static const size_t MAX_SIZE_OF_STREAMBUF = 2LL * 1024 * 1024 * 1024;
 
     enum Metric {
         L2 = 0, INNER_PRODUCT = 1, COSINE = 2, FAST_L2 = 3, PQ = 4

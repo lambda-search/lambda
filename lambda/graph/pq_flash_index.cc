@@ -819,14 +819,14 @@ namespace lambda {
                              dists_out);
         };
         flare::stop_watcher query_timer, io_timer, cpu_timer;
-        std::vector<Neighbor> retset(l_search + 1);
+        std::vector<neighbor> retset(l_search + 1);
         flare::robin_set<uint64_t> &visited = *(query_scratch->visited);
 
-        std::vector<Neighbor> full_retset;
+        std::vector<neighbor> full_retset;
         full_retset.reserve(4096);
         uint32_t best_medoid = 0;
         float best_dist = (std::numeric_limits<float>::max)();
-        std::vector<SimpleNeighbor> medoid_dists;
+        std::vector<simple_neighbor> medoid_dists;
         for (uint64_t cur_m = 0; cur_m < num_medoids; cur_m++) {
             float cur_expanded_dist = dist_cmp_float->compare(
                     query_float, centroid_data + aligned_dim * cur_m,
@@ -947,7 +947,7 @@ namespace lambda {
                                         query_float, (uint8_t *) node_fp_coords_copy);
                 }
                 full_retset.push_back(
-                        Neighbor((unsigned) cached_nhood.first, cur_expanded_dist, true));
+                        neighbor((unsigned) cached_nhood.first, cur_expanded_dist, true));
 
                 uint64_t nnbrs = cached_nhood.second.first;
                 unsigned *node_nbrs = cached_nhood.second.second;
@@ -972,9 +972,9 @@ namespace lambda {
                         if (dist >= retset[cur_list_size - 1].distance &&
                             (cur_list_size == l_search))
                             continue;
-                        Neighbor nn(id, dist, true);
+                        neighbor nn(id, dist, true);
                         // Return position in sorted list where nn inserted.
-                        auto r = InsertIntoPool(retset.data(), cur_list_size, nn);
+                        auto r = insert_into_pool(retset.data(), cur_list_size, nn);
                         if (cur_list_size < l_search)
                             ++cur_list_size;
                         if (r < nk)
@@ -1025,7 +1025,7 @@ namespace lambda {
                                 query_float, (uint8_t *) node_fp_coords_copy);
                 }
                 full_retset.push_back(
-                        Neighbor(frontier_nhood.first, cur_expanded_dist, true));
+                        neighbor(frontier_nhood.first, cur_expanded_dist, true));
                 unsigned *node_nbrs = (node_buf + 1);
                 // compute node_nbrs <-> query dist in PQ space
                 cpu_timer.start();
@@ -1051,8 +1051,8 @@ namespace lambda {
                         if (dist >= retset[cur_list_size - 1].distance &&
                             (cur_list_size == l_search))
                             continue;
-                        Neighbor nn(id, dist, true);
-                        auto r = InsertIntoPool(
+                        neighbor nn(id, dist, true);
+                        auto r = insert_into_pool(
                                 retset.data(), cur_list_size,
                                 nn);  // Return position in sorted list where nn inserted.
                         if (cur_list_size < l_search)
@@ -1079,7 +1079,7 @@ namespace lambda {
 
         // re-sort by distance
         std::sort(full_retset.begin(), full_retset.end(),
-                  [](const Neighbor &left, const Neighbor &right) {
+                  [](const neighbor &left, const neighbor &right) {
                       return left.distance < right.distance;
                   });
 
@@ -1128,7 +1128,7 @@ namespace lambda {
             }
 
             std::sort(full_retset.begin(), full_retset.end(),
-                      [](const Neighbor &left, const Neighbor &right) {
+                      [](const neighbor &left, const neighbor &right) {
                           return left.distance < right.distance;
                       });
         }

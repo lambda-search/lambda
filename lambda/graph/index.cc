@@ -80,11 +80,11 @@ namespace lambda {
 
         _des = new std::vector<unsigned>();
         _des->reserve(2 * r);
-        _pool = new std::vector<Neighbor>();
+        _pool = new std::vector<neighbor>();
         _pool->reserve(l_to_use * 10);
         _visited = new flare::robin_set<unsigned>();
         _visited->reserve(l_to_use * 2);
-        _best_l_nodes = new std::vector<Neighbor>();
+        _best_l_nodes = new std::vector<neighbor>();
         _best_l_nodes->resize(l_to_use + 1);
         _inserted_into_pool_rs = new flare::robin_set<unsigned>();
         _inserted_into_pool_rs->reserve(l_to_use * 20);
@@ -784,9 +784,9 @@ namespace lambda {
     std::pair<uint32_t, uint32_t> Index<T, TagT>::iterate_to_fixed_point(
             const T *node_coords, const unsigned Lsize,
             const std::vector<unsigned> &init_ids,
-            std::vector<Neighbor> &expanded_nodes_info,
+            std::vector<neighbor> &expanded_nodes_info,
             flare::robin_set<unsigned> &expanded_nodes_ids,
-            std::vector<Neighbor> &best_L_nodes, std::vector<unsigned> &des,
+            std::vector<neighbor> &best_L_nodes, std::vector<unsigned> &des,
             flare::robin_set<unsigned> &inserted_into_pool_rs,
             flare::dynamic_bitset<> &inserted_into_pool_bs, bool ret_frozen,
             bool search_invocation) {
@@ -800,7 +800,7 @@ namespace lambda {
         }
 
         unsigned l = 0;
-        Neighbor nn;
+        neighbor nn;
 
         bool fast_iterate =
                 (_max_points + _num_frozen_pts) <= MAX_POINTS_FOR_USING_BITSET;
@@ -822,7 +822,7 @@ namespace lambda {
                 FLARE_CHECK(false) <<
                                    std::string("Wrong loc") + std::to_string(id);
             }
-            nn = Neighbor(id,
+            nn = neighbor(id,
                           _distance->compare(_data + _aligned_dim * (size_t) id,
                                              node_coords, (unsigned) _aligned_dim),
                           true);
@@ -910,8 +910,8 @@ namespace lambda {
                         if (dist >= best_L_nodes[l - 1].distance && (l == Lsize))
                             continue;
 
-                        Neighbor nn(id, dist, true);
-                        unsigned r = InsertIntoPool(best_L_nodes.data(), l, nn);
+                        neighbor nn(id, dist, true);
+                        unsigned r = insert_into_pool(best_L_nodes.data(), l, nn);
                         if (l < Lsize)
                             ++l;
                         if (r < nk)
@@ -933,9 +933,9 @@ namespace lambda {
     void Index<T, TagT>::get_expanded_nodes(
             const size_t node_id, const unsigned Lindex,
             std::vector<unsigned> init_ids,
-            std::vector<Neighbor> &expanded_nodes_info,
+            std::vector<neighbor> &expanded_nodes_info,
             flare::robin_set<unsigned> &expanded_nodes_ids, std::vector<unsigned> &des,
-            std::vector<Neighbor> &best_L_nodes,
+            std::vector<neighbor> &best_L_nodes,
             flare::robin_set<unsigned> &inserted_into_pool_rs,
             flare::dynamic_bitset<> &inserted_into_pool_bs) {
         const T *node_coords = _data + _aligned_dim * node_id;
@@ -952,7 +952,7 @@ namespace lambda {
     void Index<T, TagT>::get_expanded_nodes(
             const size_t node_id, const unsigned Lindex,
             std::vector<unsigned> init_ids,
-            std::vector<Neighbor> &expanded_nodes_info,
+            std::vector<neighbor> &expanded_nodes_info,
             flare::robin_set<unsigned> &expanded_nodes_ids) {
         const T *node_coords = _data + _aligned_dim * node_id;
 
@@ -960,7 +960,7 @@ namespace lambda {
             init_ids.emplace_back(_start);
 
         std::vector<unsigned> des;
-        std::vector<Neighbor> best_L_nodes;
+        std::vector<neighbor> best_L_nodes;
         best_L_nodes.resize(Lindex + 1);
         flare::robin_set<unsigned> inserted_into_pool_rs;
         flare::dynamic_bitset<> inserted_into_pool_bs;
@@ -972,9 +972,9 @@ namespace lambda {
 
     template<typename T, typename TagT>
     void Index<T, TagT>::search_for_point_and_add_links(
-            int location, uint32_t Lindex, std::vector<Neighbor> &pool,
+            int location, uint32_t Lindex, std::vector<neighbor> &pool,
             flare::robin_set<unsigned> &visited, std::vector<unsigned> &des,
-            std::vector<Neighbor> &best_l_nodes,
+            std::vector<neighbor> &best_l_nodes,
             flare::robin_set<unsigned> &inserted_into_pool_rs,
             flare::dynamic_bitset<> &inserted_into_pool_bs) {
         std::vector<unsigned> init_ids;
@@ -1044,10 +1044,10 @@ namespace lambda {
     }
 
     template<typename T, typename TagT>
-    void Index<T, TagT>::occlude_list(std::vector<Neighbor> &pool,
+    void Index<T, TagT>::occlude_list(std::vector<neighbor> &pool,
                                       const float alpha, const unsigned degree,
                                       const unsigned maxc,
-                                      std::vector<Neighbor> &result) {
+                                      std::vector<neighbor> &result) {
         if (pool.size() == 0)
             return;
 
@@ -1100,7 +1100,7 @@ namespace lambda {
 
     template<typename T, typename TagT>
     void Index<T, TagT>::prune_neighbors(const unsigned location,
-                                         std::vector<Neighbor> &pool,
+                                         std::vector<neighbor> &pool,
                                          std::vector<unsigned> &pruned_list) {
         prune_neighbors(location, pool, _indexingRange, _indexingMaxC,
                         _indexingAlpha, pruned_list);
@@ -1108,7 +1108,7 @@ namespace lambda {
 
     template<typename T, typename TagT>
     void Index<T, TagT>::prune_neighbors(const unsigned location,
-                                         std::vector<Neighbor> &pool,
+                                         std::vector<neighbor> &pool,
                                          const uint32_t range,
                                          const uint32_t max_candidate_size,
                                          const float alpha,
@@ -1126,7 +1126,7 @@ namespace lambda {
         // sort the pool based on distance to query
         std::sort(pool.begin(), pool.end());
 
-        std::vector<Neighbor> result;
+        std::vector<neighbor> result;
         result.reserve(range);
 
         occlude_list(pool, alpha, range, max_candidate_size, result);
@@ -1218,7 +1218,7 @@ namespace lambda {
             if (prune_needed) {
                 copy_of_neighbors.push_back(n);
                 flare::robin_set<unsigned> dummy_visited(0);
-                std::vector<Neighbor> dummy_pool(0);
+                std::vector<neighbor> dummy_pool(0);
 
                 size_t reserveSize =
                         (size_t) (std::ceil(1.05 * GRAPH_SLACK_FACTOR * range));
@@ -1232,7 +1232,7 @@ namespace lambda {
                                 _distance->compare(_data + _aligned_dim * (size_t) des,
                                                    _data + _aligned_dim * (size_t) cur_nbr,
                                                    (unsigned) _aligned_dim);
-                        dummy_pool.emplace_back(Neighbor(cur_nbr, dist, true));
+                        dummy_pool.emplace_back(neighbor(cur_nbr, dist, true));
                         dummy_visited.insert(cur_nbr);
                     }
                 }
@@ -1293,7 +1293,7 @@ namespace lambda {
 
         /* visit_order is a vector that is initialized to the entire graph */
         std::vector<unsigned> visit_order;
-        std::vector<lambda::Neighbor> pool, tmp;
+        std::vector<lambda::neighbor> pool, tmp;
         flare::robin_set<unsigned> visited;
         visit_order.reserve(_nd + _num_frozen_pts);
         for (unsigned i = 0; i < (unsigned) _nd; i++) {
@@ -1327,13 +1327,13 @@ namespace lambda {
 #pragma omp parallel for schedule(dynamic, 2048)
         for (int64_t node_ctr = 0; node_ctr < (int64_t) (visit_order.size()); node_ctr++) {
             auto node = visit_order[node_ctr];
-            std::vector<Neighbor> pool;
+            std::vector<neighbor> pool;
             flare::robin_set<unsigned> visited;
             pool.reserve(_indexingQueueSize * 2);
             visited.reserve(_indexingQueueSize * 2);
             std::vector<unsigned> des;
             des.reserve(_indexingRange * GRAPH_SLACK_FACTOR);
-            std::vector<Neighbor> best_L_nodes;
+            std::vector<neighbor> best_L_nodes;
             best_L_nodes.resize(_indexingQueueSize + 1);
             flare::robin_set<unsigned> inserted_into_pool_rs;
             flare::dynamic_bitset<> inserted_into_pool_bs;
@@ -1356,7 +1356,7 @@ namespace lambda {
             auto node = visit_order[node_ctr];
             if (_final_graph[node].size() > _indexingRange) {
                 flare::robin_set<unsigned> dummy_visited(0);
-                std::vector<Neighbor> dummy_pool(0);
+                std::vector<neighbor> dummy_pool(0);
                 std::vector<unsigned> new_out_neighbors;
 
                 for (auto cur_nbr : _final_graph[node]) {
@@ -1366,7 +1366,7 @@ namespace lambda {
                                 _distance->compare(_data + _aligned_dim * (size_t) node,
                                                    _data + _aligned_dim * (size_t) cur_nbr,
                                                    (unsigned) _aligned_dim);
-                        dummy_pool.emplace_back(Neighbor(cur_nbr, dist, true));
+                        dummy_pool.emplace_back(neighbor(cur_nbr, dist, true));
                         dummy_visited.insert(cur_nbr);
                     }
                 }
@@ -1392,7 +1392,7 @@ namespace lambda {
             if ((size_t) node < _nd || (size_t) node == _max_points) {
                 if (_final_graph[node].size() > range) {
                     flare::robin_set<unsigned> dummy_visited(0);
-                    std::vector<Neighbor> dummy_pool(0);
+                    std::vector<neighbor> dummy_pool(0);
                     std::vector<unsigned> new_out_neighbors;
 
                     for (auto cur_nbr : _final_graph[node]) {
@@ -1402,7 +1402,7 @@ namespace lambda {
                                     _distance->compare(_data + _aligned_dim * (size_t) node,
                                                        _data + _aligned_dim * (size_t) cur_nbr,
                                                        (unsigned) _aligned_dim);
-                            dummy_pool.emplace_back(Neighbor(cur_nbr, dist, true));
+                            dummy_pool.emplace_back(neighbor(cur_nbr, dist, true));
                             dummy_visited.insert(cur_nbr);
                         }
                     }
@@ -1656,10 +1656,10 @@ namespace lambda {
     std::pair<uint32_t, uint32_t> Index<T, TagT>::search_impl(
             const T *query, const size_t K, const unsigned L, IdType *indices,
             float *distances, in_mem_query_scratch<T> &scratch) {
-        std::vector<Neighbor> &expanded_nodes_info = scratch.pool();
+        std::vector<neighbor> &expanded_nodes_info = scratch.pool();
         flare::robin_set<unsigned> &expanded_nodes_ids = scratch.visited();
         std::vector<unsigned> &des = scratch.des();
-        std::vector<Neighbor> best_L_nodes = scratch.best_l_nodes();
+        std::vector<neighbor> best_L_nodes = scratch.best_l_nodes();
         flare::robin_set<unsigned> &inserted_into_pool_rs =
                 scratch.inserted_into_pool_rs();
         flare::dynamic_bitset<> &inserted_into_pool_bs =
@@ -1864,7 +1864,7 @@ namespace lambda {
         }
         assert(_in_graph[loc].size() == in_nbr.size());
 
-        std::vector<Neighbor> pool, tmp;
+        std::vector<neighbor> pool, tmp;
         flare::robin_set<unsigned> visited;
         std::vector<unsigned> intersection;
         unsigned Lindex = parameters.Get<unsigned>("L");
@@ -1890,8 +1890,8 @@ namespace lambda {
         }
 
         flare::robin_set<unsigned> candidate_set;
-        std::vector<Neighbor> expanded_nghrs;
-        std::vector<Neighbor> result;
+        std::vector<neighbor> expanded_nghrs;
+        std::vector<neighbor> result;
 
         for (size_t i = 0; i < intersection.size(); i++) {
             auto ngh = intersection[i];
@@ -1930,7 +1930,7 @@ namespace lambda {
 
                 for (auto j : candidate_set)
                     expanded_nghrs.push_back(
-                            Neighbor(j,
+                            neighbor(j,
                                      _distance->compare(_data + _aligned_dim * (size_t) ngh,
                                                         _data + _aligned_dim * (size_t) j,
                                                         (unsigned) _aligned_dim),
@@ -2000,8 +2000,8 @@ namespace lambda {
             const flare::robin_set<unsigned> &old_delete_set, size_t i,
             const unsigned &range, const unsigned &maxc, const float &alpha) {
         flare::robin_set<unsigned> candidate_set;
-        std::vector<Neighbor> expanded_nghrs;
-        std::vector<Neighbor> result;
+        std::vector<neighbor> expanded_nghrs;
+        std::vector<neighbor> result;
 
         bool modify = false;
 
@@ -2024,7 +2024,7 @@ namespace lambda {
         if (modify) {
             for (auto j : candidate_set) {
                 expanded_nghrs.push_back(
-                        Neighbor(j,
+                        neighbor(j,
                                  _distance->compare(_data + _aligned_dim * i,
                                                     _data + _aligned_dim * (size_t) j,
                                                     (unsigned) _aligned_dim),
@@ -2501,7 +2501,7 @@ namespace lambda {
 
         ScratchStoreManager<T> manager(_query_scratch);
         auto scratch = manager.scratch_space();
-        std::vector<Neighbor> &pool = scratch.pool();
+        std::vector<neighbor> &pool = scratch.pool();
         flare::robin_set<unsigned> &visited = scratch.visited();
         pool.clear();
         visited.clear();
@@ -2636,7 +2636,7 @@ namespace lambda {
                                                       unsigned *indices) {
         DistanceFastL2<T> *dist_fast = (DistanceFastL2<T> *) _distance;
 
-        std::vector<Neighbor> retset(L + 1);
+        std::vector<neighbor> retset(L + 1);
         std::vector<unsigned> init_ids(L);
         // std::mt19937 rng(rand());
         // GenRandom(rng, init_ids.data(), L, (unsigned) nd_);
@@ -2678,7 +2678,7 @@ namespace lambda {
             x++;
             float dist =
                     dist_fast->compare(x, query, norm_x, (unsigned) _aligned_dim);
-            retset[i] = Neighbor(id, dist, true);
+            retset[i] = neighbor(id, dist, true);
             flags[id] = true;
             L++;
         }
@@ -2711,8 +2711,8 @@ namespace lambda {
                             dist_fast->compare(query, data, norm, (unsigned) _aligned_dim);
                     if (dist >= retset[L - 1].distance)
                         continue;
-                    Neighbor nn(id, dist, true);
-                    int r = InsertIntoPool(retset.data(), L, nn);
+                    neighbor nn(id, dist, true);
+                    int r = insert_into_pool(retset.data(), L, nn);
 
                     // if(L+1 < retset.size()) ++L;
                     if (r < nk)

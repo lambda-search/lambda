@@ -51,6 +51,7 @@ list(APPEND CARBIN_GCC_FLAGS
         "-Wwrite-strings"
         "-Wno-class-memaccess"
         "-Wno-sign-compare"
+        "-Wno-overloaded-virtual"
         "-DNOMINMAX"
         "-D__CONST__="
         )
@@ -84,6 +85,7 @@ list(APPEND CARBIN_LLVM_FLAGS
         "-Wpointer-arith"
         "-Wself-assign"
         "-Wno-shadow"
+        "-Wno-overloaded-virtual"
         "-Wstring-conversion"
         "-Wtautological-overlap-compare"
         "-Wno-undef"

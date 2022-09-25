@@ -48,10 +48,10 @@ namespace lambda {
 
     template<typename T>
     struct in_mem_query_scratch {
-        std::vector<Neighbor> *_pool = nullptr;
+        std::vector<neighbor> *_pool = nullptr;
         flare::robin_set<unsigned> *_visited = nullptr;
         std::vector<unsigned> *_des = nullptr;
-        std::vector<Neighbor> *_best_l_nodes = nullptr;
+        std::vector<neighbor> *_best_l_nodes = nullptr;
         flare::robin_set<unsigned> *_inserted_into_pool_rs = nullptr;
         flare::dynamic_bitset<> *_inserted_into_pool_bs = nullptr;
 
@@ -73,7 +73,7 @@ namespace lambda {
 
         void destroy();
 
-        std::vector<Neighbor> &pool() {
+        std::vector<neighbor> &pool() {
             return *_pool;
         }
 
@@ -85,7 +85,7 @@ namespace lambda {
             return *_visited;
         }
 
-        std::vector<Neighbor> &best_l_nodes() {
+        std::vector<neighbor> &best_l_nodes() {
             return *_best_l_nodes;
         }
 
@@ -289,19 +289,19 @@ namespace lambda {
         std::pair<uint32_t, uint32_t> iterate_to_fixed_point(
                 const T *node_coords, const unsigned Lindex,
                 const std::vector<unsigned> &init_ids,
-                std::vector<Neighbor> &expanded_nodes_info,
+                std::vector<neighbor> &expanded_nodes_info,
                 flare::robin_set<unsigned> &expanded_nodes_ids,
-                std::vector<Neighbor> &best_L_nodes, std::vector<unsigned> &des,
+                std::vector<neighbor> &best_L_nodes, std::vector<unsigned> &des,
                 flare::robin_set<unsigned> &inserted_into_pool_rs,
                 flare::dynamic_bitset<> &inserted_into_pool_bs, bool ret_frozen = true,
                 bool search_invocation = false);
 
         void get_expanded_nodes(const size_t node, const unsigned Lindex,
                                 std::vector<unsigned> init_ids,
-                                std::vector<Neighbor> &expanded_nodes_info,
+                                std::vector<neighbor> &expanded_nodes_info,
                                 flare::robin_set<unsigned> &expanded_nodes_ids,
                                 std::vector<unsigned> &des,
-                                std::vector<Neighbor> &best_L_nodes,
+                                std::vector<neighbor> &best_L_nodes,
                                 flare::robin_set<unsigned> &inserted_into_pool_rs,
                                 flare::dynamic_bitset<> &inserted_into_pool_bs);
 
@@ -309,26 +309,26 @@ namespace lambda {
         // be improved here as well using the same technique as above.
         void get_expanded_nodes(const size_t node_id, const unsigned Lindex,
                                 std::vector<unsigned> init_ids,
-                                std::vector<Neighbor> &expanded_nodes_info,
+                                std::vector<neighbor> &expanded_nodes_info,
                                 flare::robin_set<unsigned> &expanded_nodes_ids);
 
         void search_for_point_and_add_links(
-                int location, uint32_t Lindex, std::vector<Neighbor> &pool,
+                int location, uint32_t Lindex, std::vector<neighbor> &pool,
                 flare::robin_set<unsigned> &visited, std::vector<unsigned> &des,
-                std::vector<Neighbor> &best_L_nodes,
+                std::vector<neighbor> &best_L_nodes,
                 flare::robin_set<unsigned> &inserted_into_pool_rs,
                 flare::dynamic_bitset<> &inserted_into_pool_bs);
 
-        void prune_neighbors(const unsigned location, std::vector<Neighbor> &pool,
+        void prune_neighbors(const unsigned location, std::vector<neighbor> &pool,
                              std::vector<unsigned> &pruned_list);
 
-        void prune_neighbors(const unsigned location, std::vector<Neighbor> &pool,
+        void prune_neighbors(const unsigned location, std::vector<neighbor> &pool,
                              const uint32_t range, const uint32_t max_candidate_size,
                              const float alpha, std::vector<unsigned> &pruned_list);
 
-        void occlude_list(std::vector<Neighbor> &pool, const float alpha,
+        void occlude_list(std::vector<neighbor> &pool, const float alpha,
                           const unsigned degree, const unsigned maxc,
-                          std::vector<Neighbor> &result);
+                          std::vector<neighbor> &result);
 
         // add reverse links from all the visited nodes to node n.
         void batch_inter_insert(unsigned n,

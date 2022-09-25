@@ -24,7 +24,6 @@
 #endif
 
 #include <unistd.h>
-#include "cached_io.h"
 #include "flare/container/robin_set.h"
 #include "utils.h"
 #include <flare/base/profile.h>
