@@ -729,7 +729,7 @@ namespace lambda {
                                                float *distances,
                                                const uint64_t beam_width,
                                                const bool use_reorder_data,
-                                               QueryStats *stats) {
+                                               query_stats *stats) {
         cached_beam_search(query1, k_search, l_search, indices, distances,
                            beam_width, std::numeric_limits<uint32_t>::max(),
                            use_reorder_data, stats);
@@ -739,7 +739,7 @@ namespace lambda {
     void pq_flash_index<T>::cached_beam_search(
             const T *query1, const uint64_t k_search, const uint64_t l_search, uint64_t *indices,
             float *distances, const uint64_t beam_width, const uint32_t io_limit,
-            const bool use_reorder_data, QueryStats *stats) {
+            const bool use_reorder_data, query_stats *stats) {
         ThreadData<T> data = this->thread_data.pop();
         while (data.scratch.sector_scratch == nullptr) {
             this->thread_data.wait_for_push_notify();
@@ -1167,7 +1167,7 @@ namespace lambda {
                                              std::vector<uint64_t> &indices,
                                              std::vector<float> &distances,
                                              const uint64_t min_beam_width,
-                                             QueryStats *stats) {
+                                             query_stats *stats) {
         uint32_t res_count = 0;
 
         bool stop_flag = false;

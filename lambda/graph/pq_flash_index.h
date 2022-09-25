@@ -91,12 +91,12 @@ namespace lambda {
         FLARE_EXPORT void cached_beam_search(
                 const T *query, const uint64_t k_search, const uint64_t l_search, uint64_t *res_ids,
                 float *res_dists, const uint64_t beam_width,
-                const bool use_reorder_data = false, QueryStats *stats = nullptr);
+                const bool use_reorder_data = false, query_stats *stats = nullptr);
 
         FLARE_EXPORT void cached_beam_search(
                 const T *query, const uint64_t k_search, const uint64_t l_search, uint64_t *res_ids,
                 float *res_dists, const uint64_t beam_width, const uint32_t io_limit,
-                const bool use_reorder_data = false, QueryStats *stats = nullptr);
+                const bool use_reorder_data = false, query_stats *stats = nullptr);
 
         FLARE_EXPORT uint32_t range_search(const T *query1, const double range,
                                        const uint64_t min_l_search,
@@ -104,7 +104,7 @@ namespace lambda {
                                        std::vector<uint64_t> &indices,
                                        std::vector<float> &distances,
                                        const uint64_t min_beam_width,
-                                       QueryStats *stats = nullptr);
+                                       query_stats *stats = nullptr);
 
         std::shared_ptr<AlignedFileReader> &reader;
 

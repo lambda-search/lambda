@@ -661,7 +661,7 @@ namespace lambda {
         while (!stop_flag) {
             std::vector<uint64_t> tuning_sample_result_ids_64(tuning_sample_num, 0);
             std::vector<float> tuning_sample_result_dists(tuning_sample_num, 0);
-            lambda::QueryStats *stats = new lambda::QueryStats[tuning_sample_num];
+            lambda::query_stats *stats = new lambda::query_stats[tuning_sample_num];
 
             auto s = std::chrono::high_resolution_clock::now();
 #pragma omp parallel for schedule(dynamic, 1) num_threads(nthreads)
@@ -679,11 +679,11 @@ namespace lambda {
 
             double lat_999 = lambda::get_percentile_stats<float>(
                     stats, tuning_sample_num, 0.999f,
-                    [](const lambda::QueryStats &stats) { return stats.total_us; });
+                    [](const lambda::query_stats &stats) { return stats.total_us; });
 
             double mean_latency = lambda::get_mean_stats<float>(
                     stats, tuning_sample_num,
-                    [](const lambda::QueryStats &stats) { return stats.total_us; });
+                    [](const lambda::query_stats &stats) { return stats.total_us; });
 
             if (qps > max_qps && lat_999 < (15000) + mean_latency * 2) {
                 max_qps = qps;

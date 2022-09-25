@@ -18,7 +18,7 @@
 #include "parameters.h"
 
 namespace lambda {
-  struct QueryStats {
+  struct query_stats {
     double total_us = 0;  // total time to process query in micros
     double io_us = 0;     // total time spent in IO
     double cpu_us = 0;    // total time spent in CPU
@@ -36,8 +36,8 @@ namespace lambda {
 
   template<typename T>
   inline T get_percentile_stats(
-      QueryStats *stats, uint64_t len, float percentile,
-      const std::function<T(const QueryStats &)> &member_fn) {
+      query_stats *stats, uint64_t len, float percentile,
+      const std::function<T(const query_stats &)> &member_fn) {
     std::vector<T> vals(len);
     for (uint64_t i = 0; i < len; i++) {
       vals[i] = member_fn(stats[i]);
@@ -53,8 +53,8 @@ namespace lambda {
 
   template<typename T>
   inline double get_mean_stats(
-      QueryStats *stats, uint64_t len,
-      const std::function<T(const QueryStats &)> &member_fn) {
+      query_stats *stats, uint64_t len,
+      const std::function<T(const query_stats &)> &member_fn) {
     double avg = 0;
     for (uint64_t i = 0; i < len; i++) {
       avg += (double) member_fn(stats[i]);
