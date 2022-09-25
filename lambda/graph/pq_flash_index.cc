@@ -549,8 +549,10 @@ namespace lambda {
         this->num_points = nptsuint64_t;
         this->n_chunks = nchunksuint64_t;
 
-        pq_table.load_pq_centroid_bin(pq_table_bin.c_str(), nchunksuint64_t);
-
+        rs = pq_table.load_pq_centroid_bin(pq_table_bin.c_str(), nchunksuint64_t);
+        if(!rs.is_ok()) {
+            return rs;
+        }
         FLARE_LOG(INFO)
                 << "Loaded PQ centroids and in-memory compressed vectors. #points: "
                 << num_points << " #dim: " << data_dim
@@ -566,7 +568,10 @@ namespace lambda {
             use_disk_index_pq = true;
             // giving 0 chunks to make the pq_table infer from the
             // chunk_offsets file the correct value
-            disk_pq_table.load_pq_centroid_bin(disk_pq_pivots_path.c_str(), 0);
+            rs = disk_pq_table.load_pq_centroid_bin(disk_pq_pivots_path.c_str(), 0);
+            if(!rs.is_ok()) {
+                return rs;
+            }
             disk_pq_n_chunks = disk_pq_table.get_num_chunks();
             disk_bytes_per_point =
                     disk_pq_n_chunks *
