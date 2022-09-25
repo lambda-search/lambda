@@ -14,20 +14,20 @@
 #include <sstream>
 #include <stack>
 #include <string>
-#include "flare/container/robin_set.h"
-#include "flare/container/robin_map.h"
-#include "flare/container/sparse_map.h"
-#include "flare/container/dynamic_bitset.h"
+#include "melon/container/robin_set.h"
+#include "melon/container/robin_map.h"
+#include "melon/container/sparse_map.h"
+#include "melon/container/dynamic_bitset.h"
 #include "lambda/common/vector_distance.h"
 #include "locking.h"
-#include "flare/base/natural_number_map.h"
-#include "flare/base/natural_number_set.h"
+#include "melon/base/natural_number_map.h"
+#include "melon/base/natural_number_set.h"
 #include "lambda/common/math_utils.h"
 #include "neighbor.h"
 #include "parameters.h"
 #include "utils.h"
 #include "concurrent_queue.h"
-#include <flare/base/profile.h>
+#include <melon/base/profile.h>
 
 #define GRAPH_SLACK_FACTOR 1.3
 #define OVERHEAD_FACTOR 1.1
@@ -49,11 +49,11 @@ namespace lambda {
     template<typename T>
     struct in_mem_query_scratch {
         std::vector<neighbor> *_pool = nullptr;
-        flare::robin_set<unsigned> *_visited = nullptr;
+        melon::robin_set<unsigned> *_visited = nullptr;
         std::vector<unsigned> *_des = nullptr;
         std::vector<neighbor> *_best_l_nodes = nullptr;
-        flare::robin_set<unsigned> *_inserted_into_pool_rs = nullptr;
-        flare::dynamic_bitset<> *_inserted_into_pool_bs = nullptr;
+        melon::robin_set<unsigned> *_inserted_into_pool_rs = nullptr;
+        melon::dynamic_bitset<> *_inserted_into_pool_bs = nullptr;
 
         T *aligned_query = nullptr;
         uint32_t *indices = nullptr;
@@ -65,7 +65,7 @@ namespace lambda {
 
         in_mem_query_scratch();
 
-        flare::result_status setup(uint32_t search_l, uint32_t indexing_l, uint32_t r, size_t dim);
+        melon::result_status setup(uint32_t search_l, uint32_t indexing_l, uint32_t r, size_t dim);
 
         void clear();
 
@@ -81,7 +81,7 @@ namespace lambda {
             return *_des;
         }
 
-        flare::robin_set<unsigned> &visited() {
+        melon::robin_set<unsigned> &visited() {
             return *_visited;
         }
 
@@ -89,11 +89,11 @@ namespace lambda {
             return *_best_l_nodes;
         }
 
-        flare::robin_set<unsigned> &inserted_into_pool_rs() {
+        melon::robin_set<unsigned> &inserted_into_pool_rs() {
             return *_inserted_into_pool_rs;
         }
 
-        flare::dynamic_bitset<> &inserted_into_pool_bs() {
+        melon::dynamic_bitset<> &inserted_into_pool_bs() {
             return *_inserted_into_pool_bs;
         }
     };
@@ -126,7 +126,7 @@ namespace lambda {
     public:
         // Constructor for Bulk operations and for creating the index object solely
         // for loading a prexisting index.
-        FLARE_EXPORT Index(Metric m, const size_t dim,
+        MELON_EXPORT Index(Metric m, const size_t dim,
                            const size_t max_points = 1,
                            const bool dynamic_index = false,
                            const bool enable_tags = false,
@@ -134,7 +134,7 @@ namespace lambda {
                            const bool concurrent_consolidate = false);
 
         // Constructor for incremental index
-        FLARE_EXPORT Index(Metric m, const size_t dim, const size_t max_points,
+        MELON_EXPORT Index(Metric m, const size_t dim, const size_t max_points,
                            const bool dynamic_index,
                            const Parameters &indexParameters,
                            const Parameters &searchParameters,
@@ -142,117 +142,117 @@ namespace lambda {
                            const bool support_eager_delete = false,
                            const bool concurrent_consolidate = false);
 
-        FLARE_EXPORT ~Index();
+        MELON_EXPORT ~Index();
 
         // Saves graph, data, metadata and associated tags.
-        FLARE_EXPORT flare::result_status save(const char *filename,
+        MELON_EXPORT melon::result_status save(const char *filename,
                                                bool compact_before_save = false);
 
         // Load functions
-        FLARE_EXPORT flare::result_status load(const char *index_file, uint32_t num_threads,
+        MELON_EXPORT melon::result_status load(const char *index_file, uint32_t num_threads,
                                                uint32_t search_l);
 
         // get some private variables
-        FLARE_EXPORT size_t get_num_points();
+        MELON_EXPORT size_t get_num_points();
 
-        FLARE_EXPORT size_t get_max_points();
+        MELON_EXPORT size_t get_max_points();
 
         // Batch build from a file. Optionally pass tags vector.
-        FLARE_EXPORT flare::result_status build(
+        MELON_EXPORT melon::result_status build(
                 const char *filename, const size_t num_points_to_load,
                 Parameters &parameters,
                 const std::vector<TagT> &tags = std::vector<TagT>());
 
         // Batch build from a file. Optionally pass tags file.
-        FLARE_EXPORT flare::result_status build(const char *filename,
+        MELON_EXPORT melon::result_status build(const char *filename,
                                                 const size_t num_points_to_load,
                                                 Parameters &parameters,
                                                 const char *tag_filename);
 
         // Batch build from a data array, which must pad vectors to aligned_dim
-        FLARE_EXPORT flare::result_status build(const T *data, const size_t num_points_to_load,
+        MELON_EXPORT melon::result_status build(const T *data, const size_t num_points_to_load,
                                                 Parameters &parameters,
                                                 const std::vector<TagT> &tags);
 
         // Set starting point of an index before inserting any points incrementally
-        FLARE_EXPORT flare::result_status set_start_point(T *data);
+        MELON_EXPORT melon::result_status set_start_point(T *data);
         // Set starting point to a random point on a sphere of certain radius
-        FLARE_EXPORT void set_start_point_at_random(T radius);
+        MELON_EXPORT void set_start_point_at_random(T radius);
 
         // For Bulk Index FastL2 search, we interleave the data with graph
-        FLARE_EXPORT flare::result_status optimize_index_layout();
+        MELON_EXPORT melon::result_status optimize_index_layout();
 
         // For FastL2 search on optimized layout
-        FLARE_EXPORT void search_with_optimized_layout(const T *query,
+        MELON_EXPORT void search_with_optimized_layout(const T *query,
                                                        size_t K, size_t L,
                                                        unsigned *indices);
 
         // Added search overload that takes L as parameter, so that we
         // can customize L on a per-query basis without tampering with "Parameters"
         template<typename IDType>
-        FLARE_EXPORT std::pair<uint32_t, uint32_t> search(
+        MELON_EXPORT std::pair<uint32_t, uint32_t> search(
                 const T *query, const size_t K, const unsigned L, IDType *indices,
                 float *distances = nullptr);
 
         // Initialize space for res_vectors before calling.
-        FLARE_EXPORT size_t search_with_tags(const T *query, const uint64_t K,
+        MELON_EXPORT size_t search_with_tags(const T *query, const uint64_t K,
                                              const unsigned L, TagT *tags,
                                              float *distances,
                                              std::vector<T *> &res_vectors);
 
         // Will fail if tag already in the index
-        FLARE_EXPORT flare::result_status insert_point(const T *point, const TagT tag);
+        MELON_EXPORT melon::result_status insert_point(const T *point, const TagT tag);
 
         // call this before issuing deletions to sets relevant flags
-        FLARE_EXPORT int enable_delete();
+        MELON_EXPORT int enable_delete();
 
         // Record deleted point now and restructure graph later. Return -1 if tag
         // not found, 0 if OK. Do not call if _eager_delete was called earlier and
         // data was not consolidated
-        FLARE_EXPORT int lazy_delete(const TagT &tag);
+        MELON_EXPORT int lazy_delete(const TagT &tag);
 
         // Record deleted points now and restructure graph later. Add to failed_tags
         // if tag not found. Do not call if _eager_delete was called earlier and
         // data was not consolidated.
-        FLARE_EXPORT flare::result_status lazy_delete(const std::vector<TagT> &tags,
+        MELON_EXPORT melon::result_status lazy_delete(const std::vector<TagT> &tags,
                                                       std::vector<TagT> &failed_tags);
 
         // Call after a series of lazy deletions
         // Returns number of live points left after consolidation
         // If _conc_consolidates is set in the ctor, then this call can be invoked
         // alongside inserts and lazy deletes, else it acquires _update_lock
-        FLARE_EXPORT consolidation_report
+        MELON_EXPORT consolidation_report
         consolidate_deletes(const Parameters &parameters);
 
         // Delete point from graph and restructure it immediately. Do not call if
         // _lazy_delete was called earlier and data was not consolidated
-        FLARE_EXPORT int eager_delete(const TagT tag,
+        MELON_EXPORT int eager_delete(const TagT tag,
                                       const Parameters &parameters,
                                       int delete_mode = 1);
 
-        FLARE_EXPORT void prune_all_nbrs(const Parameters &parameters);
+        MELON_EXPORT void prune_all_nbrs(const Parameters &parameters);
 
-        FLARE_EXPORT bool is_index_saved();
+        MELON_EXPORT bool is_index_saved();
 
         // repositions frozen points to the end of _data - if they have been moved
         // during deletion
-        FLARE_EXPORT void reposition_frozen_point_to_end();
+        MELON_EXPORT void reposition_frozen_point_to_end();
 
-        FLARE_EXPORT void reposition_point(unsigned old_location,
+        MELON_EXPORT void reposition_point(unsigned old_location,
                                            unsigned new_location);
 
-        // FLARE_EXPORT void save_index_as_one_file(bool flag);
+        // MELON_EXPORT void save_index_as_one_file(bool flag);
 
-        FLARE_EXPORT void get_active_tags(flare::robin_set<TagT> &active_tags);
+        MELON_EXPORT void get_active_tags(melon::robin_set<TagT> &active_tags);
 
         // memory should be allocated for vec before calling this function
-        FLARE_EXPORT int get_vector_by_tag(TagT &tag, T *vec);
+        MELON_EXPORT int get_vector_by_tag(TagT &tag, T *vec);
 
-        FLARE_EXPORT void print_status() const;
+        MELON_EXPORT void print_status() const;
 
         // This variable MUST be updated if the number of entries in the metadata
         // change.
-        FLARE_EXPORT static const int METADATA_ROWS = 5;
+        MELON_EXPORT static const int METADATA_ROWS = 5;
 
         // ********************************
         //
@@ -267,7 +267,7 @@ namespace lambda {
         Index<T, TagT> &operator=(const Index<T, TagT> &) = delete;
 
         // Use after _data and _nd have been populated
-        flare::result_status build_with_data_populated(Parameters &parameters,
+        melon::result_status build_with_data_populated(Parameters &parameters,
                                                        const std::vector<TagT> &tags);
 
         // generates 1 frozen point that will never be deleted from the graph
@@ -290,34 +290,34 @@ namespace lambda {
                 const T *node_coords, const unsigned Lindex,
                 const std::vector<unsigned> &init_ids,
                 std::vector<neighbor> &expanded_nodes_info,
-                flare::robin_set<unsigned> &expanded_nodes_ids,
+                melon::robin_set<unsigned> &expanded_nodes_ids,
                 std::vector<neighbor> &best_L_nodes, std::vector<unsigned> &des,
-                flare::robin_set<unsigned> &inserted_into_pool_rs,
-                flare::dynamic_bitset<> &inserted_into_pool_bs, bool ret_frozen = true,
+                melon::robin_set<unsigned> &inserted_into_pool_rs,
+                melon::dynamic_bitset<> &inserted_into_pool_bs, bool ret_frozen = true,
                 bool search_invocation = false);
 
         void get_expanded_nodes(const size_t node, const unsigned Lindex,
                                 std::vector<unsigned> init_ids,
                                 std::vector<neighbor> &expanded_nodes_info,
-                                flare::robin_set<unsigned> &expanded_nodes_ids,
+                                melon::robin_set<unsigned> &expanded_nodes_ids,
                                 std::vector<unsigned> &des,
                                 std::vector<neighbor> &best_L_nodes,
-                                flare::robin_set<unsigned> &inserted_into_pool_rs,
-                                flare::dynamic_bitset<> &inserted_into_pool_bs);
+                                melon::robin_set<unsigned> &inserted_into_pool_rs,
+                                melon::dynamic_bitset<> &inserted_into_pool_bs);
 
         // get_expanded_nodes for insertion. Must investigate to see if perf can
         // be improved here as well using the same technique as above.
         void get_expanded_nodes(const size_t node_id, const unsigned Lindex,
                                 std::vector<unsigned> init_ids,
                                 std::vector<neighbor> &expanded_nodes_info,
-                                flare::robin_set<unsigned> &expanded_nodes_ids);
+                                melon::robin_set<unsigned> &expanded_nodes_ids);
 
         void search_for_point_and_add_links(
                 int location, uint32_t Lindex, std::vector<neighbor> &pool,
-                flare::robin_set<unsigned> &visited, std::vector<unsigned> &des,
+                melon::robin_set<unsigned> &visited, std::vector<unsigned> &des,
                 std::vector<neighbor> &best_L_nodes,
-                flare::robin_set<unsigned> &inserted_into_pool_rs,
-                flare::dynamic_bitset<> &inserted_into_pool_bs);
+                melon::robin_set<unsigned> &inserted_into_pool_rs,
+                melon::dynamic_bitset<> &inserted_into_pool_bs);
 
         void prune_neighbors(const unsigned location, std::vector<neighbor> &pool,
                              std::vector<unsigned> &pruned_list);
@@ -350,11 +350,11 @@ namespace lambda {
         void link(Parameters &parameters);
 
         // Acquire _tag_lock before calling
-        [[nodiscard]] flare::result_status reserve_location(int &ret);
+        [[nodiscard]] melon::result_status reserve_location(int &ret);
 
         size_t release_location(int location);
 
-        size_t release_locations(flare::robin_set<unsigned> &locations);
+        size_t release_locations(melon::robin_set<unsigned> &locations);
 
         // Resize the index when no slots are left for insertion.
         // MUST acquire _num_points_lock and _update_lock before calling.
@@ -365,40 +365,40 @@ namespace lambda {
         // Renumber nodes, update tag and location maps and compact the
         // graph, mode = _consolidated_order in case of lazy deletion and
         // _compacted_order in case of eager deletion
-        FLARE_EXPORT flare::result_status compact_data();
+        MELON_EXPORT melon::result_status compact_data();
 
-        FLARE_EXPORT flare::result_status compact_frozen_point();
+        MELON_EXPORT melon::result_status compact_frozen_point();
 
         // Remove deleted nodes from adj list of node i and absorb edges from
         // deleted neighbors Acquire _locks[i] prior to calling for thread-safety
-        void process_delete(const flare::robin_set<unsigned> &old_delete_set,
+        void process_delete(const melon::robin_set<unsigned> &old_delete_set,
                             size_t i, const unsigned &range, const unsigned &maxc,
                             const float &alpha);
 
-        [[nodiscard]] flare::result_status initialize_query_scratch(uint32_t num_threads, uint32_t search_l,
+        [[nodiscard]] melon::result_status initialize_query_scratch(uint32_t num_threads, uint32_t search_l,
                                                                     uint32_t indexing_l, uint32_t r, size_t dim);
 
         // Do not call without acquiring appropriate locks
         // call public member functions save and load to invoke these.
-        FLARE_EXPORT uint64_t save_graph(std::string filename);
+        MELON_EXPORT uint64_t save_graph(std::string filename);
 
-        FLARE_EXPORT uint64_t save_data(std::string filename);
+        MELON_EXPORT uint64_t save_data(std::string filename);
 
-        FLARE_EXPORT flare::result_status save_tags(std::string filename, size_t *saved_size);
+        MELON_EXPORT melon::result_status save_tags(std::string filename, size_t *saved_size);
 
-        FLARE_EXPORT flare::result_status save_delete_list(const std::string &filename, size_t *saved_size);
+        MELON_EXPORT melon::result_status save_delete_list(const std::string &filename, size_t *saved_size);
 
-        FLARE_EXPORT size_t load_graph(const std::string filename,
+        MELON_EXPORT size_t load_graph(const std::string filename,
                                        size_t expected_num_points);
 
-        FLARE_EXPORT size_t load_data(std::string filename0);
+        MELON_EXPORT size_t load_data(std::string filename0);
 
-        FLARE_EXPORT [[nodiscard]] flare::result_status load_tags(const std::string tag_file_name, size_t &n);
+        MELON_EXPORT [[nodiscard]] melon::result_status load_tags(const std::string tag_file_name, size_t &n);
 
-        FLARE_EXPORT [[nodiscard]] flare::result_status load_delete_set(const std::string &filename, size_t &ret);
+        MELON_EXPORT [[nodiscard]] melon::result_status load_delete_set(const std::string &filename, size_t &ret);
 
     private:
-        flare::result_status _status;
+        melon::result_status _status;
         // vector_distance functions
         Metric _dist_metric = lambda::L2;
         vector_distance<T> *_distance = nullptr;
@@ -443,11 +443,11 @@ namespace lambda {
         ConcurrentQueue<in_mem_query_scratch<T>> _query_scratch;
 
         // data structures, flags and locks for dynamic indexing
-        flare::sparse_map<TagT, unsigned> _tag_to_location;
-        flare::natural_number_map<unsigned, TagT> _location_to_tag;
+        melon::sparse_map<TagT, unsigned> _tag_to_location;
+        melon::natural_number_map<unsigned, TagT> _location_to_tag;
 
-        flare::robin_set<unsigned> _delete_set;
-        flare::natural_number_set<unsigned> _empty_slots;
+        melon::robin_set<unsigned> _delete_set;
+        melon::natural_number_set<unsigned> _empty_slots;
 
         bool _support_eager_delete =
                 false;  // Enables in-graph, requires more space

@@ -1,6 +1,6 @@
 
 #include "lambda/ann_index.h"
-#include <flare/log/logging.h>
+#include <melon/log/logging.h>
 #include "gflags/gflags.h"
 #include "lambda/dbd/dbd_index.h"
 #include "lambda/faiss/faiss_binary_index.h"
@@ -63,7 +63,7 @@ namespace lambda {
                 break;
             }
             default: {
-                FLARE_LOG(ERROR) << "Unsupported engine type:" << index_conf.conf().engine();
+                MELON_LOG(ERROR) << "Unsupported engine type:" << index_conf.conf().engine();
                 break;
             }
         }
@@ -90,7 +90,7 @@ namespace lambda {
 
     // need model?
     bool need_model(int engine) {
-        FLARE_LOG(INFO) << "need model: " << engine;
+        MELON_LOG(INFO) << "need model: " << engine;
         return engine == ENGINE_FAISS_VECTOR || engine == ENGINE_FAISS_BINARY;
     }
 

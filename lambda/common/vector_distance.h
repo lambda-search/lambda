@@ -1,6 +1,6 @@
 #pragma once
 
-#include <flare/base/profile.h>
+#include <melon/base/profile.h>
 
 namespace lambda {
 
@@ -28,20 +28,20 @@ namespace lambda {
 
     class DistanceCosineInt8 : public vector_distance<int8_t> {
     public:
-        FLARE_EXPORT virtual float compare(const int8_t *a, const int8_t *b,
+        MELON_EXPORT virtual float compare(const int8_t *a, const int8_t *b,
                                                 uint32_t length) const override;
     };
 
     class DistanceL2Int8 : public vector_distance<int8_t> {
     public:
-        FLARE_EXPORT virtual float compare(const int8_t *a, const int8_t *b,
+        MELON_EXPORT virtual float compare(const int8_t *a, const int8_t *b,
                                                 uint32_t size) const override;
     };
 
     // AVX implementations. Borrowed from HNSW code.
     class AVXDistanceL2Int8 : public vector_distance<int8_t> {
     public:
-        FLARE_EXPORT virtual float compare(const int8_t *a, const int8_t *b,
+        MELON_EXPORT virtual float compare(const int8_t *a, const int8_t *b,
                                                 uint32_t length) const override;
     };
 
@@ -52,7 +52,7 @@ namespace lambda {
     class SlowDistanceL2Int : public vector_distance<T> {
     public:
         // Implementing here because this is a template function
-        FLARE_EXPORT virtual float compare(const T *a, const T *b,
+        MELON_EXPORT virtual float compare(const T *a, const T *b,
                                                 uint32_t length) const override {
             uint32_t result = 0;
             for (uint32_t i = 0; i < length; i++) {
@@ -65,38 +65,38 @@ namespace lambda {
 
     class DistanceCosineFloat : public vector_distance<float> {
     public:
-        FLARE_EXPORT virtual float compare(const float *a, const float *b,
+        MELON_EXPORT virtual float compare(const float *a, const float *b,
                                                 uint32_t length) const override;
     };
 
     class DistanceL2Float : public vector_distance<float> {
     public:
-        FLARE_EXPORT virtual float compare(const float *a, const float *b,
+        MELON_EXPORT virtual float compare(const float *a, const float *b,
                                                 uint32_t size) const override
         __attribute__((hot));
     };
 
     class AVXDistanceL2Float : public vector_distance<float> {
     public:
-        FLARE_EXPORT virtual float compare(const float *a, const float *b,
+        MELON_EXPORT virtual float compare(const float *a, const float *b,
                                                 uint32_t length) const override;
     };
 
     class SlowDistanceL2Float : public vector_distance<float> {
     public:
-        FLARE_EXPORT virtual float compare(const float *a, const float *b,
+        MELON_EXPORT virtual float compare(const float *a, const float *b,
                                                 uint32_t length) const;
     };
 
     class SlowDistanceCosineUInt8 : public vector_distance<uint8_t> {
     public:
-        FLARE_EXPORT virtual float compare(const uint8_t *a, const uint8_t *b,
+        MELON_EXPORT virtual float compare(const uint8_t *a, const uint8_t *b,
                                                 uint32_t length) const override;
     };
 
     class DistanceL2UInt8 : public vector_distance<uint8_t> {
     public:
-        FLARE_EXPORT virtual float compare(const uint8_t *a, const uint8_t *b,
+        MELON_EXPORT virtual float compare(const uint8_t *a, const uint8_t *b,
                                                 uint32_t size) const override;
     };
 
@@ -128,7 +128,7 @@ namespace lambda {
 
     class AVXDistanceInnerProductFloat : public vector_distance<float> {
     public:
-        FLARE_EXPORT virtual float compare(const float *a, const float *b,
+        MELON_EXPORT virtual float compare(const float *a, const float *b,
                                                 uint32_t length) const override;
     };
 
@@ -137,7 +137,7 @@ namespace lambda {
         AVXDistanceInnerProductFloat _innerProduct;
 
     public:
-        FLARE_EXPORT virtual float compare(const float *a, const float *b,
+        MELON_EXPORT virtual float compare(const float *a, const float *b,
                                                 uint32_t length) const override {
             // Inner product returns negative values to indicate distance.
             // This will ensure that cosine is between -1 and 1.

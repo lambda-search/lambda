@@ -5,11 +5,11 @@
  *****************************************************************/
 
 
-#include "flare/log/logging.h"
+#include "melon/log/logging.h"
 #include "pq_flash_index.h"
-#include <flare/base/profile.h>
+#include <melon/base/profile.h>
 
-#ifndef FLARE_PLATFORM_OSX
+#ifndef MELON_PLATFORM_OSX
 #include <malloc.h>
 #endif
 
@@ -23,10 +23,10 @@
 #include <thread>
 #include "lambda/common/vector_distance.h"
 #include "parameters.h"
-#include <flare/times/time.h>
+#include <melon/times/time.h>
 #include "utils.h"
 #include "cosine_similarity.h"
-#include "flare/container/robin_set.h"
+#include "melon/container/robin_set.h"
 #include "linux_aligned_file_reader.h"
 
 #define READ_U64(stream, val) stream.read((char *) &val, sizeof(uint64_t))
@@ -91,11 +91,11 @@ namespace lambda {
             : reader(fileReader), metric(m) {
         if (m == lambda::Metric::COSINE || m == lambda::Metric::INNER_PRODUCT) {
             if (std::is_floating_point<T>::value) {
-                FLARE_LOG(INFO) << "Cosine metric chosen for (normalized) float data."
+                MELON_LOG(INFO) << "Cosine metric chosen for (normalized) float data."
                                    "Changing distance to L2 to boost accuracy.";
                 m = lambda::Metric::L2;
             } else {
-                FLARE_LOG(ERROR) << "WARNING: Cannot normalize integral data types."
+                MELON_LOG(ERROR) << "WARNING: Cannot normalize integral data types."
                                  << " This may result in erroneous results or poor recall."
                                  << " Consider using L2 distance with integral data types.";
             }
@@ -126,7 +126,7 @@ namespace lambda {
 
     template<typename T>
     void pq_flash_index<T>::setup_thread_data(uint64_t nthreads) {
-        FLARE_LOG(INFO) << "Setting up thread-specific contexts for nthreads: "
+        MELON_LOG(INFO) << "Setting up thread-specific contexts for nthreads: "
                         << nthreads;
 // omp parallel for to generate unique thread IDs
 #pragma omp parallel for num_threads((int) nthreads)
@@ -154,7 +154,7 @@ namespace lambda {
                 lambda::alloc_aligned((void **) &scratch.aligned_query_float,
                                       this->aligned_dim * sizeof(float),
                                       8 * sizeof(float));
-                scratch.visited = new flare::robin_set<uint64_t>(4096);
+                scratch.visited = new melon::robin_set<uint64_t>(4096);
                 lambda::alloc_aligned((void **) &scratch.rotated_query,
                                       this->aligned_dim * sizeof(float),
                                       8 * sizeof(float));
@@ -176,7 +176,7 @@ namespace lambda {
 
     template<typename T>
     void pq_flash_index<T>::destroy_thread_data() {
-        FLARE_LOG(INFO) << "Clearing scratch";
+        MELON_LOG(INFO) << "Clearing scratch";
         assert(this->thread_data.size() == this->max_nthreads);
         while (this->thread_data.size() > 0) {
             ThreadData<T> data = this->thread_data.pop();
@@ -201,7 +201,7 @@ namespace lambda {
 
     template<typename T>
     void pq_flash_index<T>::load_cache_list(std::vector<uint32_t> &node_list) {
-        FLARE_LOG(INFO) << "Loading the cache list into memory.." << std::flush;
+        MELON_LOG(INFO) << "Loading the cache list into memory.." << std::flush;
         uint64_t num_cached_nodes = node_list.size();
 
         // borrow thread data
@@ -268,11 +268,11 @@ namespace lambda {
         // return thread data
         this->thread_data.push(this_thread_data);
         this->thread_data.push_notify_all();
-        FLARE_LOG(INFO) << "..done.";
+        MELON_LOG(INFO) << "..done.";
     }
 
     template<typename T>
-    flare::result_status pq_flash_index<T>::generate_cache_list_from_sample_queries(
+    melon::result_status pq_flash_index<T>::generate_cache_list_from_sample_queries(
             std::string sample_bin, uint64_t l_search, uint64_t beamwidth,
             uint64_t num_nodes_to_cache, uint32_t nthreads,
             std::vector<uint32_t> &node_list) {
@@ -294,8 +294,8 @@ namespace lambda {
                 return rs;
             }
         } else {
-            FLARE_LOG(ERROR) << "Sample bin file not found. Not generating cache.";
-            return flare::result_status(-1, "Sample bin file not found. Not generating cache.");
+            MELON_LOG(ERROR) << "Sample bin file not found. Not generating cache.";
+            return melon::result_status(-1, "Sample bin file not found. Not generating cache.");
         }
 
         std::vector<uint64_t> tmp_result_ids_64(sample_num, 0);
@@ -321,7 +321,7 @@ namespace lambda {
         this->count_visited_nodes = false;
 
         lambda::aligned_free(samples);
-        return flare::result_status::success();
+        return melon::result_status::success();
     }
 
     template<typename T>
@@ -335,12 +335,12 @@ namespace lambda {
         // Do not cache more than 10% of the nodes in the index
         uint64_t tenp_nodes = (uint64_t) (std::round(this->num_points * 0.1));
         if (num_nodes_to_cache > tenp_nodes) {
-            FLARE_LOG(INFO) << "Reducing nodes to cache from: " << num_nodes_to_cache
+            MELON_LOG(INFO) << "Reducing nodes to cache from: " << num_nodes_to_cache
                             << " to: " << tenp_nodes
                             << "(10 percent of total nodes:" << this->num_points << ")";
             num_nodes_to_cache = tenp_nodes == 0 ? 1 : tenp_nodes;
         }
-        FLARE_LOG(INFO) << "Caching " << num_nodes_to_cache << "...";
+        MELON_LOG(INFO) << "Caching " << num_nodes_to_cache << "...";
 
         // borrow thread data
         ThreadData<T> this_thread_data = this->thread_data.pop();
@@ -351,9 +351,9 @@ namespace lambda {
 
         IOContext &ctx = this_thread_data.ctx;
 
-        std::unique_ptr<flare::robin_set<unsigned>> cur_level, prev_level;
-        cur_level = std::make_unique<flare::robin_set<unsigned>>();
-        prev_level = std::make_unique<flare::robin_set<unsigned>>();
+        std::unique_ptr<melon::robin_set<unsigned>> cur_level, prev_level;
+        cur_level = std::make_unique<melon::robin_set<unsigned>>();
+        prev_level = std::make_unique<melon::robin_set<unsigned>>();
 
         for (uint64_t miter = 0; miter < num_medoids; miter++) {
             cur_level->insert(medoids[miter]);
@@ -381,13 +381,13 @@ namespace lambda {
 
             std::shuffle(nodes_to_expand.begin(), nodes_to_expand.end(), urng);
 
-            FLARE_LOG(INFO) << "Level: " << lvl << std::flush;
+            MELON_LOG(INFO) << "Level: " << lvl << std::flush;
             bool finish_flag = false;
 
             size_t BLOCK_SIZE = 1024;
             uint64_t nblocks = DIV_ROUND_UP(nodes_to_expand.size(), BLOCK_SIZE);
             for (size_t block = 0; block < nblocks && !finish_flag; block++) {
-                FLARE_LOG(INFO) << "." << std::flush;
+                MELON_LOG(INFO) << "." << std::flush;
                 size_t start = block * BLOCK_SIZE;
                 size_t end =
                         (std::min)((block + 1) * BLOCK_SIZE, nodes_to_expand.size());
@@ -430,7 +430,7 @@ namespace lambda {
                 }
             }
 
-            FLARE_LOG(INFO) << ". #nodes: " << node_list.size() - prev_node_list_size
+            MELON_LOG(INFO) << ". #nodes: " << node_list.size() - prev_node_list_size
                             << ", #nodes thus far: " << node_list.size();
             prev_node_list_size = node_list.size();
             lvl++;
@@ -447,15 +447,15 @@ namespace lambda {
              i++)
             node_list.push_back(cur_level_node_list[i]);
 
-        FLARE_LOG(INFO) << "Level: " << lvl;
-        FLARE_LOG(INFO) << ". #nodes: " << node_list.size() - prev_node_list_size
+        MELON_LOG(INFO) << "Level: " << lvl;
+        MELON_LOG(INFO) << ". #nodes: " << node_list.size() - prev_node_list_size
                         << ", #nodes thus far: " << node_list.size();
 
         // return thread data
         this->thread_data.push(this_thread_data);
         this->thread_data.push_notify_all();
 
-        FLARE_LOG(INFO) << "done";
+        MELON_LOG(INFO) << "done";
     }
 
     template<typename T>
@@ -473,7 +473,7 @@ namespace lambda {
             data = this->thread_data.pop();
         }
         IOContext &ctx = data.ctx;
-        FLARE_LOG(INFO) << "Loading centroid data from medoids vector data of "
+        MELON_LOG(INFO) << "Loading centroid data from medoids vector data of "
                         << num_medoids << " medoid(s)";
         for (uint64_t cur_m = 0; cur_m < num_medoids; cur_m++) {
             auto medoid = medoids[cur_m];
@@ -512,7 +512,7 @@ namespace lambda {
     }
 
     template<typename T>
-    flare::result_status pq_flash_index<T>::load(uint32_t num_threads, const char *index_prefix) {
+    melon::result_status pq_flash_index<T>::load(uint32_t num_threads, const char *index_prefix) {
         std::string pq_table_bin = std::string(index_prefix) + "_pq_pivots.bin";
         std::string pq_compressed_vectors =
                 std::string(index_prefix) + "_pq_compressed.bin";
@@ -528,8 +528,8 @@ namespace lambda {
         this->disk_index_file = disk_index_file;
 
         if (pq_file_num_centroids != 256) {
-            FLARE_LOG(INFO) << "Error. Number of PQ centroids is not 256. Exitting.";
-            return flare::result_status(-1, "Error. Number of PQ centroids is not 256. Exitting.");
+            MELON_LOG(INFO) << "Error. Number of PQ centroids is not 256. Exitting.";
+            return melon::result_status(-1, "Error. Number of PQ centroids is not 256. Exitting.");
         }
 
         this->data_dim = pq_file_dim;
@@ -553,13 +553,13 @@ namespace lambda {
         if(!rs.is_ok()) {
             return rs;
         }
-        FLARE_LOG(INFO)
+        MELON_LOG(INFO)
                 << "Loaded PQ centroids and in-memory compressed vectors. #points: "
                 << num_points << " #dim: " << data_dim
                 << " #aligned_dim: " << aligned_dim << " #chunks: " << n_chunks;
 
         if (n_chunks > MAX_PQ_CHUNKS) {
-            return flare::result_status(-1, "Error loading index. Ensure that max PQ bytes for in-memory "
+            return melon::result_status(-1, "Error loading index. Ensure that max PQ bytes for in-memory "
                                             "PQ data does not exceed {}", MAX_PQ_CHUNKS);
         }
 
@@ -576,7 +576,7 @@ namespace lambda {
             disk_bytes_per_point =
                     disk_pq_n_chunks *
                     sizeof(uint8_t);  // revising disk_bytes_per_point since DISK PQ is used.
-            FLARE_LOG(INFO) << "Disk index uses PQ data compressed down to "
+            MELON_LOG(INFO) << "Disk index uses PQ data compressed down to "
                             << disk_pq_n_chunks << " bytes per point.";
         }
 
@@ -595,10 +595,10 @@ namespace lambda {
         READ_U64(index_metadata, disk_ndims);
 
         if (disk_nnodes != num_points) {
-            FLARE_LOG(INFO) << "Mismatch in #points for compressed data file and disk "
+            MELON_LOG(INFO) << "Mismatch in #points for compressed data file and disk "
                                "index file: "
                             << disk_nnodes << " vs " << num_points;
-            return flare::result_status(-1, "Mismatch in #points for compressed data file and disk "
+            return melon::result_status(-1, "Mismatch in #points for compressed data file and disk "
                                             "index file: {} vs {}",disk_nnodes, num_points);
         }
 
@@ -613,7 +613,7 @@ namespace lambda {
             stream << "Error loading index. Ensure that max graph degree (R) does "
                       "not exceed "
                    << MAX_GRAPH_DEGREE;
-            return flare::result_status(-1, "Error loading index. Ensure that max graph degree (R) does "
+            return melon::result_status(-1, "Error loading index. Ensure that max graph degree (R) does "
                                             "not exceed {}", MAX_GRAPH_DEGREE);
         }
 
@@ -624,7 +624,7 @@ namespace lambda {
         if (this->num_frozen_points == 1)
             this->frozen_location = file_frozen_id;
         if (this->num_frozen_points == 1) {
-            FLARE_LOG(INFO) << " Detected frozen point in index at location "
+            MELON_LOG(INFO) << " Detected frozen point in index at location "
                             << this->frozen_location
                             << ". Will not output it at search time.";
         }
@@ -632,17 +632,17 @@ namespace lambda {
         READ_U64(index_metadata, this->reorder_data_exists);
         if (this->reorder_data_exists) {
             if (this->use_disk_index_pq == false) {
-                return flare::result_status(-1, "Reordering is designed for used with disk PQ compression option");
+                return melon::result_status(-1, "Reordering is designed for used with disk PQ compression option");
             }
             READ_U64(index_metadata, this->reorder_data_start_sector);
             READ_U64(index_metadata, this->ndims_reorder_vecs);
             READ_U64(index_metadata, this->nvecs_per_sector);
         }
 
-        FLARE_LOG(INFO) << "Disk-Index File Meta-data: ";
-        FLARE_LOG(INFO) << "# nodes per sector: " << nnodes_per_sector;
-        FLARE_LOG(INFO) << ", max node len (bytes): " << max_node_len;
-        FLARE_LOG(INFO) << ", max node degree: " << max_degree;
+        MELON_LOG(INFO) << "Disk-Index File Meta-data: ";
+        MELON_LOG(INFO) << "# nodes per sector: " << nnodes_per_sector;
+        MELON_LOG(INFO) << ", max node len (bytes): " << max_node_len;
+        MELON_LOG(INFO) << ", max node degree: " << max_degree;
 
         index_metadata.close();
         // open AlignedFileReader handle to index_file
@@ -658,11 +658,11 @@ namespace lambda {
                 return rs;
             }
             if (tmp_dim != 1) {
-                return flare::result_status(-1, "Error loading medoids file. Expected bin format of m times "
+                return melon::result_status(-1, "Error loading medoids file. Expected bin format of m times "
                                                 "1 vector of uint32_t.");
             }
             if (!file_exists(centroids_file)) {
-                FLARE_LOG(INFO)
+                MELON_LOG(INFO)
                         << "Centroid data file not found. Using corresponding vectors "
                            "for the medoids ";
                 use_medoids_data_as_centroids();
@@ -681,8 +681,8 @@ namespace lambda {
                               "m times data_dim vector of float, where m is number of "
                               "medoids "
                               "in medoids file.";
-                    FLARE_LOG(ERROR) << stream.str();
-                    return flare::result_status(-1, stream.str());
+                    MELON_LOG(ERROR) << stream.str();
+                    return melon::result_status(-1, stream.str());
                 }
             }
         } else {
@@ -702,12 +702,12 @@ namespace lambda {
                 return rs;
             }
             this->max_base_norm = norm_val[0];
-            FLARE_LOG(INFO) << "Setting re-scaling factor of base vectors to "
+            MELON_LOG(INFO) << "Setting re-scaling factor of base vectors to "
                             << this->max_base_norm;
             delete[] norm_val;
         }
-        FLARE_LOG(INFO) << "done..";
-        return flare::result_status::success();
+        MELON_LOG(INFO) << "done..";
+        return melon::result_status::success();
     }
 
 #ifdef USE_BING_INFRA
@@ -823,9 +823,9 @@ namespace lambda {
             ::pq_dist_lookup(pq_coord_scratch, n_ids, this->n_chunks, pq_dists,
                              dists_out);
         };
-        flare::stop_watcher query_timer, io_timer, cpu_timer;
+        melon::stop_watcher query_timer, io_timer, cpu_timer;
         std::vector<neighbor> retset(l_search + 1);
-        flare::robin_set<uint64_t> &visited = *(query_scratch->visited);
+        melon::robin_set<uint64_t> &visited = *(query_scratch->visited);
 
         std::vector<neighbor> full_retset;
         full_retset.reserve(4096);

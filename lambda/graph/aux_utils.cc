@@ -13,9 +13,9 @@
 #include <set>
 #include <string>
 #include <vector>
-#include <flare/files/filesystem.h>
-#include <flare/files/sequential_read_file.h>
-#include <flare/files/sequential_write_file.h>
+#include <melon/files/filesystem.h>
+#include <melon/files/sequential_read_file.h>
+#include <melon/files/sequential_write_file.h>
 
 
 #if defined(RELEASE_UNUSED_TCMALLOC_MEMORY_AT_CHECKPOINTS) && \
@@ -23,7 +23,7 @@
 #include "gperftools/malloc_extension.h"
 #endif
 
-#include "flare/log/logging.h"
+#include "melon/log/logging.h"
 #include "aux_utils.h"
 #include "index.h"
 #include "mkl.h"
@@ -31,7 +31,7 @@
 #include "partition_and_pq.h"
 #include "percentile_stats.h"
 #include "pq_flash_index.h"
-#include "flare/container/robin_set.h"
+#include "melon/container/robin_set.h"
 #include "lambda/graph/binary_file.h"
 #include "lambda/common/memory.h"
 
@@ -39,7 +39,7 @@
 
 namespace lambda {
 
-    flare::result_status add_new_file_to_single_index(std::string index_file,
+    melon::result_status add_new_file_to_single_index(std::string index_file,
                                                       std::string new_file) {
         std::unique_ptr<uint64_t[]> metadata;
         size_t nr, nc;
@@ -50,34 +50,34 @@ namespace lambda {
         if (nc != 1) {
             std::stringstream stream;
             stream << "Error, index file specified does not have correct metadata. ";
-            return flare::result_status(-1, stream.str());
+            return melon::result_status(-1, stream.str());
         }
         size_t index_ending_offset = metadata[nr - 1];
         uint64_t read_blk_size = 64 * 1024 * 1024;
-        flare::sequential_write_file writer;
+        melon::sequential_write_file writer;
         rs = writer.open(index_file);
         if(!rs.is_ok()) {
             return rs;
         }
         std::error_code ec;
-        uint64_t check_file_size = flare::file_size(index_file, ec);
+        uint64_t check_file_size = melon::file_size(index_file, ec);
         if (check_file_size != index_ending_offset) {
             std::stringstream stream;
             stream << "Error, index file specified does not have correct metadata "
                       "(last entry must match the filesize). \n";
-            return flare::result_status(-1, stream.str());
+            return melon::result_status(-1, stream.str());
         }
 
-        flare::sequential_read_file reader;
+        melon::sequential_read_file reader;
         rs = reader.open(new_file);
         if(!rs.is_ok()) {
             return rs;
         }
-        size_t fsize = flare::file_size(new_file, ec);
+        size_t fsize = melon::file_size(new_file, ec);
         if (fsize == 0) {
             std::stringstream stream;
             stream << "Error, new file specified is empty. Not appending. \n";
-            return flare::result_status(-1, stream.str());
+            return melon::result_status(-1, stream.str());
         }
 
         size_t num_blocks = DIV_ROUND_UP(fsize, read_blk_size);
@@ -122,24 +122,24 @@ namespace lambda {
                                    const std::vector<std::string> &param_list) {
         size_t num_pq_chunks =
                 (size_t) (std::floor)(uint64_t(final_index_ram_limit / (double) points_num));
-        FLARE_LOG(INFO) << "Calculated num_pq_chunks :" << num_pq_chunks;
+        MELON_LOG(INFO) << "Calculated num_pq_chunks :" << num_pq_chunks;
         if (param_list.size() >= 6) {
             float compress_ratio = (float) atof(param_list[5].c_str());
             if (compress_ratio > 0 && compress_ratio <= 1) {
                 size_t chunks_by_cr = (size_t) (std::floor)(compress_ratio * dim);
 
                 if (chunks_by_cr > 0 && chunks_by_cr < num_pq_chunks) {
-                    FLARE_LOG(INFO) << "Compress ratio:" << compress_ratio
+                    MELON_LOG(INFO) << "Compress ratio:" << compress_ratio
                                     << " new #pq_chunks:" << chunks_by_cr;
                     num_pq_chunks = chunks_by_cr;
                 } else {
-                    FLARE_LOG(INFO) << "Compress ratio: " << compress_ratio
+                    MELON_LOG(INFO) << "Compress ratio: " << compress_ratio
                                     << " #new pq_chunks: " << chunks_by_cr
                                     << " is either zero or greater than num_pq_chunks: "
                                     << num_pq_chunks << ". num_pq_chunks is unchanged. ";
                 }
             } else {
-                FLARE_LOG(ERROR) << "Compression ratio: " << compress_ratio
+                MELON_LOG(ERROR) << "Compression ratio: " << compress_ratio
                                  << " should be in (0,1]";
             }
         }
@@ -149,7 +149,7 @@ namespace lambda {
         num_pq_chunks =
                 num_pq_chunks > MAX_PQ_CHUNKS ? MAX_PQ_CHUNKS : num_pq_chunks;
 
-        FLARE_LOG(INFO) << "Compressing " << dim << "-dimensional data into "
+        MELON_LOG(INFO) << "Compressing " << dim << "-dimensional data into "
                         << num_pq_chunks << " bytes per vector.";
         return num_pq_chunks;
     }
@@ -194,7 +194,7 @@ namespace lambda {
                             float *gs_dist, unsigned dim_gs,
                             unsigned *our_results, unsigned dim_or,
                             unsigned recall_at,
-                            const flare::robin_set<unsigned> &active_tags) {
+                            const melon::robin_set<unsigned> &active_tags) {
         double total_recall = 0;
         std::set<unsigned> gt, res;
         bool printed = false;
@@ -217,7 +217,7 @@ namespace lambda {
 
             if ((active_points_count < recall_at && !active_tags.empty()) &&
                 !printed) {
-                FLARE_LOG(INFO) << "Warning: Couldn't find enough closest neighbors "
+                MELON_LOG(INFO) << "Warning: Couldn't find enough closest neighbors "
                                 << active_points_count << "/" << recall_at
                                 << " from "
                                    "truthset for query # "
@@ -277,7 +277,7 @@ namespace lambda {
                             uint64_t warmup_aligned_dim) {
         T *warmup = nullptr;
         warmup_num = 100000;
-        FLARE_LOG(INFO) << "Generating random warmup file with dim " << warmup_dim
+        MELON_LOG(INFO) << "Generating random warmup file with dim " << warmup_dim
                         << " and aligned dim " << warmup_aligned_dim << std::flush;
         lambda::alloc_aligned(((void **) &warmup),
                               warmup_num * warmup_aligned_dim * sizeof(T),
@@ -291,13 +291,13 @@ namespace lambda {
                 warmup[i * warmup_aligned_dim + d] = (T) dis(gen);
             }
         }
-        FLARE_LOG(INFO) << "..done";
+        MELON_LOG(INFO) << "..done";
         return warmup;
     }
 
 
     template<typename T>
-    std::pair<flare::result_status, T *> load_warmup(const std::string &cache_warmup_file, size_t &warmup_num,
+    std::pair<melon::result_status, T *> load_warmup(const std::string &cache_warmup_file, size_t &warmup_num,
                                                      uint64_t warmup_dim, uint64_t warmup_aligned_dim) {
         T *warmup = nullptr;
         size_t file_dim, file_aligned_dim;
@@ -314,23 +314,23 @@ namespace lambda {
                        << file_dim << " file_aligned_dim: " << file_aligned_dim
                        << " index_dim: " << warmup_dim
                        << " index_aligned_dim: " << warmup_aligned_dim;
-                return {flare::result_status(-1, stream.str()), nullptr};
+                return {melon::result_status(-1, stream.str()), nullptr};
             }
         } else {
             warmup =
                     generateRandomWarmup<T>(warmup_num, warmup_dim, warmup_aligned_dim);
         }
-        return {flare::result_status::success(), warmup};
+        return {melon::result_status::success(), warmup};
     }
 
     /***************************************************
         Support for Merging Many Vamana Indices
      ***************************************************/
 
-    flare::result_status read_idmap(const std::string &fname, std::vector<unsigned> &ivecs) {
+    melon::result_status read_idmap(const std::string &fname, std::vector<unsigned> &ivecs) {
         uint32_t npts32, dim;
         std::error_code ec;
-        size_t actual_file_size = flare::file_size(fname, ec);
+        size_t actual_file_size = melon::file_size(fname, ec);
         std::ifstream reader(fname.c_str(), std::ios::binary);
         reader.read((char *) &npts32, sizeof(uint32_t));
         reader.read((char *) &dim, sizeof(uint32_t));
@@ -342,15 +342,15 @@ namespace lambda {
                    << actual_file_size
                    << ", expected: " << (size_t) npts32 + 2 * sizeof(uint32_t);
 
-            return flare::result_status(-1, stream.str());
+            return melon::result_status(-1, stream.str());
         }
         ivecs.resize(npts32);
         reader.read((char *) ivecs.data(), ((size_t) npts32) * sizeof(uint32_t));
         reader.close();
-        return flare::result_status::success();
+        return melon::result_status::success();
     }
 
-    flare::result_status merge_shards(const std::string &vamana_prefix,
+    melon::result_status merge_shards(const std::string &vamana_prefix,
                      const std::string &vamana_suffix,
                      const std::string &idmaps_prefix,
                      const std::string &idmaps_suffix, const size_t nshards,
@@ -379,13 +379,13 @@ namespace lambda {
             nelems += idmap.size();
         }
         nnodes++;
-        FLARE_LOG(INFO) << "# nodes: " << nnodes << ", max. degree: " << max_degree;
+        MELON_LOG(INFO) << "# nodes: " << nnodes << ", max. degree: " << max_degree;
 
         // compute inverse map: node -> shards
         std::vector<std::pair<unsigned, unsigned>> node_shard;
         node_shard.reserve(nelems);
         for (uint64_t shard = 0; shard < nshards; shard++) {
-            FLARE_LOG(INFO) << "Creating inverse map -- shard #" << shard;
+            MELON_LOG(INFO) << "Creating inverse map -- shard #" << shard;
             for (uint64_t idx = 0; idx < idmaps[shard].size(); idx++) {
                 uint64_t node_id = idmaps[shard][idx];
                 node_shard.push_back(std::make_pair((uint32_t) node_id, (uint32_t) shard));
@@ -396,10 +396,10 @@ namespace lambda {
                       return left.first < right.first || (left.first == right.first &&
                                                           left.second < right.second);
                   });
-        FLARE_LOG(INFO) << "Finished computing node -> shards map";
+        MELON_LOG(INFO) << "Finished computing node -> shards map";
 
         // create cached vamana readers
-        std::vector<flare::sequential_read_file> vamana_readers(nshards);
+        std::vector<melon::sequential_read_file> vamana_readers(nshards);
         for (uint64_t i = 0; i < nshards; i++) {
             auto rs = vamana_readers[i].open(vamana_names[i]);
             if(!rs.is_ok()) {
@@ -415,7 +415,7 @@ namespace lambda {
         // frozen_point info
 
         // create cached vamana writers
-        flare::sequential_write_file merged_vamana_writer;
+        melon::sequential_write_file merged_vamana_writer;
         auto rs = merged_vamana_writer.open(output_vamana);
         if(!rs.is_ok()) {
             return rs;
@@ -438,7 +438,7 @@ namespace lambda {
                     input_width > max_input_width ? input_width : max_input_width;
         }
 
-        FLARE_LOG(INFO) << "Max input width: " << max_input_width
+        MELON_LOG(INFO) << "Max input width: " << max_input_width
                         << ", output width: " << output_width;
 
         merged_vamana_writer.write((char *) &output_width, sizeof(unsigned));
@@ -469,7 +469,7 @@ namespace lambda {
         merged_vamana_writer.write((char *) &merged_index_frozen, sizeof(uint64_t));
         medoid_writer.close();
 
-        FLARE_LOG(INFO) << "Starting merge";
+        MELON_LOG(INFO) << "Starting merge";
 
         // Gopal. random_shuffle() is deprecated.
         std::random_device rng;
@@ -494,7 +494,7 @@ namespace lambda {
                                            nnbrs * sizeof(unsigned));
                 merged_index_size += (sizeof(unsigned) + nnbrs * sizeof(unsigned));
                 if (cur_id % 499999 == 1) {
-                    FLARE_LOG(INFO) << "." << std::flush;
+                    MELON_LOG(INFO) << "." << std::flush;
                 }
                 cur_id = node_id;
                 nnbrs = 0;
@@ -529,17 +529,17 @@ namespace lambda {
             nhood_set[p] = 0;
         final_nhood.clear();
 
-        FLARE_LOG(INFO) << "Expected size: " << merged_index_size;
+        MELON_LOG(INFO) << "Expected size: " << merged_index_size;
 
         merged_vamana_writer.reset();
         merged_vamana_writer.write((char *) &merged_index_size, sizeof(uint64_t));
 
-        FLARE_LOG(INFO) << "Finished merge";
-        return flare::result_status::success();
+        MELON_LOG(INFO) << "Finished merge";
+        return melon::result_status::success();
     }
 
     template<typename T>
-    flare::result_status build_merged_vamana_index(std::string base_file,
+    melon::result_status build_merged_vamana_index(std::string base_file,
                                   lambda::Metric compareMetric, unsigned L,
                                   unsigned R, double sampling_rate,
                                   double ram_budget, std::string mem_index_path,
@@ -551,7 +551,7 @@ namespace lambda {
         double full_index_ram =
                 estimate_ram_usage(base_num, base_dim, sizeof(T), R);
         if (full_index_ram < ram_budget * 1024 * 1024 * 1024) {
-            FLARE_LOG(INFO) << "Full index fits in RAM budget, should consume at most "
+            MELON_LOG(INFO) << "Full index fits in RAM budget, should consume at most "
                             << full_index_ram / (1024 * 1024 * 1024)
                             << "GiBs, so building in one shot";
             lambda::Parameters paras;
@@ -571,7 +571,7 @@ namespace lambda {
             _pvamanaIndex->save(mem_index_path.c_str());
             std::remove(medoids_file.c_str());
             std::remove(centroids_file.c_str());
-            return flare::result_status::success();
+            return melon::result_status::success();
         }
         std::string merged_index_prefix = mem_index_path + "_tempFiles";
         int num_parts;
@@ -641,7 +641,7 @@ namespace lambda {
             std::remove(shard_index_file.c_str());
             std::remove(shard_index_file_data.c_str());
         }
-        return flare::result_status::success();
+        return melon::result_status::success();
     }
 
     // General purpose support for DiskANN interface
@@ -701,13 +701,13 @@ namespace lambda {
     }
 
     template<typename T>
-    flare::result_status create_disk_layout(const std::string base_file,
+    melon::result_status create_disk_layout(const std::string base_file,
                                             const std::string mem_index_file,
                                             const std::string output_file,
                                             const std::string reorder_data_file) {
         unsigned npts, ndims;
 
-        flare::sequential_read_file base_reader;
+        melon::sequential_read_file base_reader;
         auto rs = base_reader.open(base_file);
         if(!rs.is_ok()) {
             return rs;
@@ -727,7 +727,7 @@ namespace lambda {
         if (reorder_data_file != std::string("")) {
             append_reorder_data = true;
             std::error_code ec;
-            size_t reorder_data_file_size = flare::file_size(reorder_data_file, ec);
+            size_t reorder_data_file_size = melon::file_size(reorder_data_file, ec);
             reorder_data_reader.exceptions(std::ofstream::failbit |
                                            std::ofstream::badbit);
 
@@ -737,23 +737,23 @@ namespace lambda {
                 reorder_data_reader.read((char *) &ndims_reorder_file,
                                          sizeof(unsigned));
                 if (npts_reorder_file != npts)
-                    return flare::result_status(-1,
+                    return melon::result_status(-1,
                                                 "Mismatch in num_points between reorder data file and base file");
                 if (reorder_data_file_size != 8 + sizeof(float) *
                                                   (size_t) npts_reorder_file *
                                                   (size_t) ndims_reorder_file)
-                    return flare::result_status(-1, "Discrepancy in reorder data file size ");
+                    return melon::result_status(-1, "Discrepancy in reorder data file size ");
             } catch (std::system_error &e) {
-                return flare::result_status(-2, reorder_data_file);
+                return melon::result_status(-2, reorder_data_file);
             }
         }
 
         // create cached reader + writer
         std::error_code ec;
-        size_t actual_file_size = flare::file_size(mem_index_file, ec);
-        FLARE_LOG(INFO) << "Vamana index file size=" << actual_file_size;
+        size_t actual_file_size = melon::file_size(mem_index_file, ec);
+        MELON_LOG(INFO) << "Vamana index file size=" << actual_file_size;
         std::ifstream vamana_reader(mem_index_file, std::ios::binary);
-        flare::sequential_write_file diskann_writer;
+        melon::sequential_write_file diskann_writer;
         rs = diskann_writer.open(output_file);
         if(!rs.is_ok()) {
             return rs;
@@ -771,7 +771,7 @@ namespace lambda {
                    << " file size from file: " << index_file_size
                    << " actual file size: " << actual_file_size;
 
-            return flare::result_status(-1, stream.str());
+            return melon::result_status(-1, stream.str());
         }
         uint64_t vamana_frozen_num = false, vamana_frozen_loc = 0;
 
@@ -788,9 +788,9 @@ namespace lambda {
                 (((uint64_t) width_u32 + 1) * sizeof(unsigned)) + (ndims_64 * sizeof(T));
         nnodes_per_sector = SECTOR_LEN / max_node_len;
 
-        FLARE_LOG(INFO) << "medoid: " << medoid << "B";
-        FLARE_LOG(INFO) << "max_node_len: " << max_node_len << "B";
-        FLARE_LOG(INFO) << "nnodes_per_sector: " << nnodes_per_sector << "B";
+        MELON_LOG(INFO) << "medoid: " << medoid << "B";
+        MELON_LOG(INFO) << "max_node_len: " << max_node_len << "B";
+        MELON_LOG(INFO) << "nnodes_per_sector: " << nnodes_per_sector << "B";
 
         // SECTOR_LEN buffer for each sector
         std::unique_ptr<char[]> sector_buf = std::make_unique<char[]>(SECTOR_LEN);
@@ -833,11 +833,11 @@ namespace lambda {
         diskann_writer.write(sector_buf.get(), SECTOR_LEN);
 
         std::unique_ptr<T[]> cur_node_coords = std::make_unique<T[]>(ndims_64);
-        FLARE_LOG(INFO) << "# sectors: " << n_sectors;
+        MELON_LOG(INFO) << "# sectors: " << n_sectors;
         uint64_t cur_node_id = 0;
         for (uint64_t sector = 0; sector < n_sectors; sector++) {
             if (sector % 100000 == 0) {
-                FLARE_LOG(INFO) << "Sector #" << sector << "written";
+                MELON_LOG(INFO) << "Sector #" << sector << "written";
             }
             memset(sector_buf.get(), 0, SECTOR_LEN);
             for (uint64_t sector_node_id = 0;
@@ -884,14 +884,14 @@ namespace lambda {
             diskann_writer.write(sector_buf.get(), SECTOR_LEN);
         }
         if (append_reorder_data) {
-            FLARE_LOG(INFO) << "Index written. Appending reorder data...";
+            MELON_LOG(INFO) << "Index written. Appending reorder data...";
 
             auto vec_len = ndims_reorder_file * sizeof(float);
             std::unique_ptr<char[]> vec_buf = std::make_unique<char[]>(vec_len);
 
             for (uint64_t sector = 0; sector < n_reorder_sectors; sector++) {
                 if (sector % 100000 == 0) {
-                    FLARE_LOG(INFO) << "Reorder data Sector #" << sector << "written";
+                    MELON_LOG(INFO) << "Reorder data Sector #" << sector << "written";
                 }
 
                 memset(sector_buf.get(), 0, SECTOR_LEN);
@@ -914,12 +914,12 @@ namespace lambda {
         diskann_writer.close();
         rs = lambda::binary_file::save_bin<uint64_t>(output_file, output_file_meta.data(),
                                                           output_file_meta.size(), 1, 0);
-        FLARE_LOG(INFO) << "Output disk index file written to " << output_file;
+        MELON_LOG(INFO) << "Output disk index file written to " << output_file;
         return rs;
     }
 
     template<typename T>
-    flare::result_status build_disk_index(const char *dataFilePath, const char *indexFilePath,
+    melon::result_status build_disk_index(const char *dataFilePath, const char *indexFilePath,
                                           const char *indexBuildParameters,
                                           lambda::Metric compareMetric, bool use_opq) {
         std::stringstream parser;
@@ -931,7 +931,7 @@ namespace lambda {
         }
         if (param_list.size() != 5 && param_list.size() != 6 &&
             param_list.size() != 7) {
-            FLARE_LOG(INFO)
+            MELON_LOG(INFO)
                     << "Correct usage of parameters is R (max degree) "
                        "L (indexing list size, better if >= R)"
                        "B (RAM limit of final index in GB)"
@@ -941,16 +941,16 @@ namespace lambda {
                        "very large dimensional data)"
                        "reorder (set true to include full precision in data file"
                        ": optional paramter, use only when using disk PQ";
-            return flare::result_status(-1, "");
+            return melon::result_status(-1, "");
         }
 
         if (!std::is_same<T, float>::value &&
             compareMetric == lambda::Metric::INNER_PRODUCT) {
             std::stringstream stream;
-            FLARE_LOG(ERROR) << "DiskANN currently only supports floating point data for Max "
+            MELON_LOG(ERROR) << "DiskANN currently only supports floating point data for Max "
                                 "Inner Product Search. ";
             //throw lambda::ANNException(stream.str(), -1);
-            return flare::result_status(-1, stream.str());
+            return melon::result_status(-1, stream.str());
         }
 
         uint32_t disk_pq_dims = 0;
@@ -995,7 +995,7 @@ namespace lambda {
         // ||x||^2/M^2) for every x, M is max norm of all points. Extra space on
         // disk needed!
         if (compareMetric == lambda::Metric::INNER_PRODUCT) {
-            FLARE_LOG(INFO) << "Using Inner Product search, so need to pre-process base "
+            MELON_LOG(INFO) << "Using Inner Product search, so need to pre-process base "
                                "data into temp file. Please ensure there is additional "
                                "(n*(d+1)*4) bytes for storing pre-processed base vectors, "
                                "apart from the intermin indices and final index.";
@@ -1015,14 +1015,14 @@ namespace lambda {
 
         double final_index_ram_limit = get_memory_budget(param_list[2]);
         if (final_index_ram_limit <= 0) {
-            FLARE_LOG(ERROR) << "Insufficient memory budget (or string was not in right "
+            MELON_LOG(ERROR) << "Insufficient memory budget (or string was not in right "
                                 "format). Should be > 0.";
-            return flare::result_status(-1, "");
+            return melon::result_status(-1, "");
         }
         double indexing_ram_budget = (float) atof(param_list[3].c_str());
         if (indexing_ram_budget <= 0) {
-            FLARE_LOG(ERROR) << "Not building index. Please provide more RAM budget";
-            return flare::result_status(-1, "");
+            MELON_LOG(ERROR) << "Not building index. Please provide more RAM budget";
+            return melon::result_status(-1, "");
         }
         uint32_t num_threads = (uint32_t) atoi(param_list[4].c_str());
 
@@ -1031,7 +1031,7 @@ namespace lambda {
             mkl_set_num_threads(num_threads);
         }
 
-        FLARE_LOG(INFO) << "Starting index build: R=" << R << " L=" << L
+        MELON_LOG(INFO) << "Starting index build: R=" << R << " L=" << L
                         << " Query RAM budget: " << final_index_ram_limit
                         << " Indexing ram budget: " << indexing_ram_budget
                         << " T: " << num_threads;
@@ -1050,7 +1050,7 @@ namespace lambda {
         num_pq_chunks =
                 num_pq_chunks > MAX_PQ_CHUNKS ? MAX_PQ_CHUNKS : num_pq_chunks;
 
-        FLARE_LOG(INFO) << "Compressing " << dim << "-dimensional data into "
+        MELON_LOG(INFO) << "Compressing " << dim << "-dimensional data into "
                         << num_pq_chunks << " bytes per vector.";
 
         size_t train_size, train_dim;
@@ -1066,7 +1066,7 @@ namespace lambda {
             if (disk_pq_dims > dim)
                 disk_pq_dims = dim;
 
-            FLARE_LOG(INFO) << "Compressing base for disk-PQ into " << disk_pq_dims
+            MELON_LOG(INFO) << "Compressing base for disk-PQ into " << disk_pq_dims
                             << " chunks ";
             auto rs = generate_pq_pivots(train_data, train_size, (uint32_t) dim, 256,
                                (uint32_t) disk_pq_dims, NUM_KMEANS_REPS,
@@ -1087,7 +1087,7 @@ namespace lambda {
                 return rs;
             }
         }
-        FLARE_LOG(INFO) << "Training data loaded of size " << train_size;
+        MELON_LOG(INFO) << "Training data loaded of size " << train_size;
 
         // don't translate data to make zero mean for PQ compression. We must not
         // translate for inner product search.
@@ -1097,7 +1097,7 @@ namespace lambda {
         if (use_opq)  // we also do not center the data for OPQ
             make_zero_mean = false;
 
-        flare::result_status rs;
+        melon::result_status rs;
         if (!use_opq) {
             rs = generate_pq_pivots(train_data, train_size, (uint32_t) dim, 256,
                                (uint32_t) num_pq_chunks, NUM_KMEANS_REPS,
@@ -1163,82 +1163,82 @@ namespace lambda {
 
         auto e = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> diff = e - s;
-        FLARE_LOG(INFO) << "Indexing time: " << diff.count();
+        MELON_LOG(INFO) << "Indexing time: " << diff.count();
 
-        return flare::result_status::success();
+        return melon::result_status::success();
     }
 
-    template FLARE_EXPORT flare::result_status create_disk_layout<int8_t>(
+    template MELON_EXPORT melon::result_status create_disk_layout<int8_t>(
             const std::string base_file, const std::string mem_index_file,
             const std::string output_file, const std::string reorder_data_file);
 
-    template FLARE_EXPORT flare::result_status create_disk_layout<uint8_t>(
+    template MELON_EXPORT melon::result_status create_disk_layout<uint8_t>(
             const std::string base_file, const std::string mem_index_file,
             const std::string output_file, const std::string reorder_data_file);
 
-    template FLARE_EXPORT flare::result_status create_disk_layout<float>(
+    template MELON_EXPORT melon::result_status create_disk_layout<float>(
             const std::string base_file, const std::string mem_index_file,
             const std::string output_file, const std::string reorder_data_file);
 
-    template FLARE_EXPORT std::pair<flare::result_status, int8_t *> load_warmup<int8_t>(
+    template MELON_EXPORT std::pair<melon::result_status, int8_t *> load_warmup<int8_t>(
             const std::string &cache_warmup_file, size_t &warmup_num,
             uint64_t warmup_dim, uint64_t warmup_aligned_dim);
 
-    template FLARE_EXPORT std::pair<flare::result_status, uint8_t *> load_warmup<uint8_t>(
+    template MELON_EXPORT std::pair<melon::result_status, uint8_t *> load_warmup<uint8_t>(
             const std::string &cache_warmup_file, size_t &warmup_num,
             uint64_t warmup_dim, uint64_t warmup_aligned_dim);
 
-    template FLARE_EXPORT std::pair<flare::result_status, float *> load_warmup<float>(
+    template MELON_EXPORT std::pair<melon::result_status, float *> load_warmup<float>(
             const std::string &cache_warmup_file, size_t &warmup_num,
             uint64_t warmup_dim, uint64_t warmup_aligned_dim);
 
 
-    template FLARE_EXPORT uint32_t optimize_beamwidth<int8_t>(
+    template MELON_EXPORT uint32_t optimize_beamwidth<int8_t>(
             std::unique_ptr<lambda::pq_flash_index<int8_t>> &pFlashIndex,
             int8_t *tuning_sample, uint64_t tuning_sample_num,
             uint64_t tuning_sample_aligned_dim, uint32_t L, uint32_t nthreads,
             uint32_t start_bw);
 
-    template FLARE_EXPORT uint32_t optimize_beamwidth<uint8_t>(
+    template MELON_EXPORT uint32_t optimize_beamwidth<uint8_t>(
             std::unique_ptr<lambda::pq_flash_index<uint8_t>> &pFlashIndex,
             uint8_t *tuning_sample, uint64_t tuning_sample_num,
             uint64_t tuning_sample_aligned_dim, uint32_t L, uint32_t nthreads,
             uint32_t start_bw);
 
-    template FLARE_EXPORT uint32_t optimize_beamwidth<float>(
+    template MELON_EXPORT uint32_t optimize_beamwidth<float>(
             std::unique_ptr<lambda::pq_flash_index<float>> &pFlashIndex,
             float *tuning_sample, uint64_t tuning_sample_num,
             uint64_t tuning_sample_aligned_dim, uint32_t L, uint32_t nthreads,
             uint32_t start_bw);
 
-    template FLARE_EXPORT flare::result_status build_disk_index<int8_t>(
+    template MELON_EXPORT melon::result_status build_disk_index<int8_t>(
             const char *dataFilePath, const char *indexFilePath,
             const char *indexBuildParameters, lambda::Metric compareMetric,
             bool use_opq);
 
-    template FLARE_EXPORT flare::result_status build_disk_index<uint8_t>(
+    template MELON_EXPORT melon::result_status build_disk_index<uint8_t>(
             const char *dataFilePath, const char *indexFilePath,
             const char *indexBuildParameters, lambda::Metric compareMetric,
             bool use_opq);
 
-    template FLARE_EXPORT flare::result_status build_disk_index<float>(
+    template MELON_EXPORT melon::result_status build_disk_index<float>(
             const char *dataFilePath, const char *indexFilePath,
             const char *indexBuildParameters, lambda::Metric compareMetric,
             bool use_opq);
 
-    template FLARE_EXPORT flare::result_status build_merged_vamana_index<int8_t>(
+    template MELON_EXPORT melon::result_status build_merged_vamana_index<int8_t>(
             std::string base_file, lambda::Metric compareMetric, unsigned L,
             unsigned R, double sampling_rate, double ram_budget,
             std::string mem_index_path, std::string medoids_path,
             std::string centroids_file);
 
-    template FLARE_EXPORT flare::result_status build_merged_vamana_index<float>(
+    template MELON_EXPORT melon::result_status build_merged_vamana_index<float>(
             std::string base_file, lambda::Metric compareMetric, unsigned L,
             unsigned R, double sampling_rate, double ram_budget,
             std::string mem_index_path, std::string medoids_path,
             std::string centroids_file);
 
-    template FLARE_EXPORT flare::result_status build_merged_vamana_index<uint8_t>(
+    template MELON_EXPORT melon::result_status build_merged_vamana_index<uint8_t>(
             std::string base_file, lambda::Metric compareMetric, unsigned L,
             unsigned R, double sampling_rate, double ram_budget,
             std::string mem_index_path, std::string medoids_path,

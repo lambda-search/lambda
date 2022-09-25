@@ -76,10 +76,7 @@ elseif (${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
 endif ()
 
 
-include(require_flare)
-include(require_rocksdb)
-include(require_frat)
-include(require_leveldb)
+include(require_melon)
 include(require_faiss)
 include(require_openssl)
 include(require_gflags)
@@ -90,14 +87,11 @@ include(FindProtobuf)
 set(DYNAMIC_LIB
         ${CMAKE_THREAD_LIBS_INIT}
         ${GFLAGS_LIBRARY}
+        ${MELON_LIBRARY}
+        ${FAISS_LIB}
         ${PROTOBUF_LIBRARIES}
-        ${LEVELDB_LIB}
         ${OPENSSL_CRYPTO_LIBRARY}
         ${OPENSSL_SSL_LIBRARY}
-        ${FLARE_LIB}
-        ${FAISS_LIB}
-        ${FRAT_LIB}
-        ${ROCKSDB_LIB}
         dl
         )
 

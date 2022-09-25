@@ -7,7 +7,7 @@
 #include <vector>
 
 #include "lambda/common/doubly_buffered_data.h"
-#include "flare/log/logging.h"
+#include "melon/log/logging.h"
 
 #include "lambda/ann_index.h"
 
@@ -53,7 +53,7 @@ namespace lambda {
 
         void clear() override;
 
-        int load(const std::string &file, flare::write_lock &index_wlock) override;
+        int load(const std::string &file, melon::write_lock &index_wlock) override;
 
         int save(const std::string &file) override;
 

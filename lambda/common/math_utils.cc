@@ -6,15 +6,15 @@
 
 
 #include <limits>
-#include <flare/base/profile.h>
+#include <melon/base/profile.h>
 
-#ifndef FLARE_PLATFORM_OSX
+#ifndef MELON_PLATFORM_OSX
 #include <malloc.h>
 #endif
 
 #include "math_utils.h"
 #include <mkl.h>
-#include "flare/log/logging.h"
+#include "melon/log/logging.h"
 //#include "utils.h"
 
 namespace lambda::math_utils {
@@ -64,16 +64,16 @@ namespace lambda::math_utils {
                               bool transpose_rot) {
         CBLAS_TRANSPOSE transpose = CblasNoTrans;
         if (transpose_rot) {
-            FLARE_LOG(INFO) << "Transposing rotation matrix.." << std::flush;
+            MELON_LOG(INFO) << "Transposing rotation matrix.." << std::flush;
             transpose = CblasTrans;
         }
-        FLARE_LOG(INFO) << "done Rotating data with random matrix.." << std::flush;
+        MELON_LOG(INFO) << "done Rotating data with random matrix.." << std::flush;
 
         cblas_sgemm(CblasRowMajor, CblasNoTrans, transpose, (MKL_INT) num_points,
                     (MKL_INT) dim, (MKL_INT) dim, 1.0, data, (MKL_INT) dim, rot_mat,
                     (MKL_INT) dim, 0, new_mat, (MKL_INT) dim);
 
-        FLARE_LOG(INFO) << "done.";
+        MELON_LOG(INFO) << "done.";
     }
 
     // calculate k closest centers to data of num_points * dim (row major)
@@ -92,7 +92,7 @@ namespace lambda::math_utils {
             const float *const docs_l2sq, const float *const centers_l2sq,
             uint32_t *center_index, float *const dist_matrix, size_t k) {
         if (k > num_centers) {
-            FLARE_LOG(INFO) << "ERROR: k (" << k << ") > num_center(" << num_centers
+            MELON_LOG(INFO) << "ERROR: k (" << k << ") > num_center(" << num_centers
                           << ")";
             return;
         }
@@ -170,7 +170,7 @@ namespace lambda::math_utils {
                                  std::vector<size_t> *inverted_index,
                                  float *pts_norms_squared) {
         if (k > num_centers) {
-            FLARE_LOG(INFO) << "ERROR: k (" << k << ") > num_center(" << num_centers
+            MELON_LOG(INFO) << "ERROR: k (" << k << ") > num_center(" << num_centers
                           << ")";
             return;
         }
@@ -233,7 +233,7 @@ namespace lambda::math_utils {
     void process_residuals(float *data_load, size_t num_points, size_t dim,
                            float *cur_pivot_data, size_t num_centers,
                            uint32_t *closest_centers, bool to_subtract) {
-        FLARE_LOG(INFO) << "Processing residuals of " << num_points << " points in "
+        MELON_LOG(INFO) << "Processing residuals of " << num_points << " points in "
                       << dim << " dimensions using " << num_centers << " centers ";
 #pragma omp parallel for schedule(static, 8192)
         for (int64_t n_iter = 0; n_iter < (int64_t) num_points; n_iter++) {
@@ -362,7 +362,7 @@ namespace lambda::kmeans {
 
             if (((i != 0) && ((old_residual - residual) / residual) < 0.00001) ||
                 (residual < std::numeric_limits<float>::epsilon())) {
-                FLARE_LOG(INFO) << "Residuals unchanged: " << old_residual << " becomes "
+                MELON_LOG(INFO) << "Residuals unchanged: " << old_residual << " becomes "
                               << residual << ". Early termination.";
                 break;
             }
@@ -402,7 +402,7 @@ namespace lambda::kmeans {
     void kmeanspp_selecting_pivots(float *data, size_t num_points, size_t dim,
                                    float *pivot_data, size_t num_centers) {
         if (num_points > 1 << 23) {
-            FLARE_LOG(INFO) << "ERROR: n_pts " << num_points
+            MELON_LOG(INFO) << "ERROR: n_pts " << num_points
                           << " currently not supported for k-means++, maximum is "
                              "8388608. Falling back to random pivot "
                              "selection.";

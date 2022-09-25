@@ -8,6 +8,6 @@ dependencies:
   - gxx =8.5 # [linux]
   - sysroot_linux-64=2.17 # [linux]
   - libfaiss_ex =1.7.2
-  - libflare
+  - melon
   - gtest =1.11.0
   - gmock =1.11.0

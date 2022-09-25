@@ -19,25 +19,25 @@ bool AvxSupportedCPU = false;
     vector_distance<float> *get_distance_function(lambda::Metric m) {
         if (m == lambda::Metric::L2) {
             if (Avx2SupportedCPU) {
-                FLARE_LOG(INFO) << "L2: Using AVX2 distance computation DistanceL2Float";
+                MELON_LOG(INFO) << "L2: Using AVX2 distance computation DistanceL2Float";
                 return new DistanceL2Float();
             } else if (AvxSupportedCPU) {
-                FLARE_LOG(INFO)
+                MELON_LOG(INFO)
                         << "L2: AVX2 not supported. Using AVX distance computation";
                 return new AVXDistanceL2Float();
             } else {
-                FLARE_LOG(INFO) << "L2: Older CPU. Using slow distance computation";
+                MELON_LOG(INFO) << "L2: Older CPU. Using slow distance computation";
                 return new SlowDistanceL2Float();
             }
         } else if (m == lambda::Metric::COSINE) {
-            FLARE_LOG(INFO) << "Cosine: Using either AVX or AVX2 implementation";
+            MELON_LOG(INFO) << "Cosine: Using either AVX or AVX2 implementation";
             return new DistanceCosineFloat();
         } else if (m == lambda::Metric::INNER_PRODUCT) {
-            FLARE_LOG(INFO) << "Inner product: Using AVX2 implementation "
+            MELON_LOG(INFO) << "Inner product: Using AVX2 implementation "
                             "AVXDistanceInnerProductFloat";
             return new AVXDistanceInnerProductFloat();
         } else if (m == lambda::Metric::FAST_L2) {
-            FLARE_LOG(INFO) << "Fast_L2: Using AVX2 implementation with norm "
+            MELON_LOG(INFO) << "Fast_L2: Using AVX2 implementation with norm "
                             "memoization DistanceFastL2<float>";
             return new DistanceFastL2<float>();
         } else {
@@ -46,7 +46,7 @@ bool AvxSupportedCPU = false;
                       "point vectors as of now. Email "
                       "{gopalsr, harshasi, rakri}@microsoft.com if you need support "
                       "for any other metric.";
-            FLARE_LOG(ERROR) << stream.str();
+            MELON_LOG(ERROR) << stream.str();
             /*throw lambda::ANNException(stream.str(), -1, __FUNCSIG__, __FILE__,
                                        __LINE__);*/
             return nullptr;
@@ -58,18 +58,18 @@ bool AvxSupportedCPU = false;
     lambda::vector_distance<int8_t> *get_distance_function(lambda::Metric m) {
         if (m == lambda::Metric::L2) {
             if (Avx2SupportedCPU) {
-                FLARE_LOG(INFO) << "Using AVX2 distance computation DistanceL2Int8.";
+                MELON_LOG(INFO) << "Using AVX2 distance computation DistanceL2Int8.";
                 return new lambda::DistanceL2Int8();
             } else if (AvxSupportedCPU) {
-                FLARE_LOG(INFO) << "AVX2 not supported. Using AVX distance computation";
+                MELON_LOG(INFO) << "AVX2 not supported. Using AVX distance computation";
                 return new lambda::AVXDistanceL2Int8();
             } else {
-                FLARE_LOG(INFO) << "Older CPU. Using slow distance computation "
+                MELON_LOG(INFO) << "Older CPU. Using slow distance computation "
                                 "SlowDistanceL2Int<int8_t>.";
                 return new lambda::SlowDistanceL2Int<int8_t>();
             }
         } else if (m == lambda::Metric::COSINE) {
-            FLARE_LOG(INFO) << "Using either AVX or AVX2 for Cosine similarity "
+            MELON_LOG(INFO) << "Using either AVX or AVX2 for Cosine similarity "
                             "DistanceCosineInt8.";
             return new lambda::DistanceCosineInt8();
         } else {
@@ -78,7 +78,7 @@ bool AvxSupportedCPU = false;
                       "now. Email "
                       "{gopalsr, harshasi, rakri}@microsoft.com if you need support "
                       "for any other metric.";
-            FLARE_LOG(ERROR) << stream.str();
+            MELON_LOG(ERROR) << stream.str();
             /*throw lambda::ANNException(stream.str(), -1, __FUNCSIG__, __FILE__,
                                        __LINE__);*/
             return nullptr;
@@ -90,7 +90,7 @@ bool AvxSupportedCPU = false;
         if (m == lambda::Metric::L2) {
             return new lambda::DistanceL2UInt8();
         } else if (m == lambda::Metric::COSINE) {
-            FLARE_LOG(INFO)
+            MELON_LOG(INFO)
                     << "AVX/AVX2 distance function not defined for Uint8. Using "
                        "slow version SlowDistanceCosineUint8() "
                        "Contact gopalsr@microsoft.com if you need AVX/AVX2 support.";
@@ -101,7 +101,7 @@ bool AvxSupportedCPU = false;
                       "now. Email "
                       "{gopalsr, harshasi, rakri}@microsoft.com if you need support "
                       "for any other metric.";
-            FLARE_LOG(ERROR) << stream.str();
+            MELON_LOG(ERROR) << stream.str();
             assert(false);
            /* throw lambda::ANNException(stream.str(), -1, __FUNCSIG__, __FILE__,
                                        __LINE__);*/
@@ -140,12 +140,12 @@ bool AvxSupportedCPU = false;
         writr.write((char *) &ndims_s32, sizeof(int32_t));
 
         uint64_t npts = (uint64_t) npts_s32, ndims = (uint64_t) ndims_s32;
-        FLARE_LOG(INFO) << "Normalizing FLOAT vectors in file: " << inFileName;
-        FLARE_LOG(INFO) << "Dataset: #pts = " << npts << ", # dims = " << ndims;
+        MELON_LOG(INFO) << "Normalizing FLOAT vectors in file: " << inFileName;
+        MELON_LOG(INFO) << "Dataset: #pts = " << npts << ", # dims = " << ndims;
 
         uint64_t blk_size = 131072;
         uint64_t nblks = ROUND_UP(npts, blk_size) / blk_size;
-        FLARE_LOG(INFO) << "# blks: " << nblks;
+        MELON_LOG(INFO) << "# blks: " << nblks;
 
         float *read_buf = new float[npts * ndims];
         for (uint64_t i = 0; i < nblks; i++) {
@@ -154,7 +154,7 @@ bool AvxSupportedCPU = false;
         }
         delete[] read_buf;
 
-        FLARE_LOG(INFO) << "Wrote normalized points to file: " << outFileName;
+        MELON_LOG(INFO) << "Wrote normalized points to file: " << outFileName;
     }
 
 }  // namespace lambda

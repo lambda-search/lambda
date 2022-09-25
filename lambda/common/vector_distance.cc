@@ -1,11 +1,11 @@
 // TODO
 // CHECK COSINE ON LINUX
 
-#include "flare/base/profile.h"
+#include "melon/base/profile.h"
 #include <immintrin.h>
 #include <iostream>
 #include "lambda/common/vector_distance.h"
-#include "flare/log/logging.h"
+#include "melon/log/logging.h"
 
 namespace lambda {
 
@@ -130,7 +130,7 @@ namespace lambda {
     template<typename T>
     float DistanceInnerProduct<T>::inner_product(const T *a, const T *b,
                                                  unsigned size) const {
-        FLARE_CHECK(std::is_floating_point<T>::value) << "ERROR: Inner Product only defined for float currently.";
+        MELON_CHECK(std::is_floating_point<T>::value) << "ERROR: Inner Product only defined for float currently.";
         float result = 0;
 
 #ifdef __GNUC__
@@ -168,7 +168,7 @@ namespace lambda {
 
 #else
 #ifdef __SSE2__
-#if defined(FLARE_PLATFORM_OSX)
+#if defined(MELON_PLATFORM_OSX)
 #define SSE_DOT(addr1, addr2, dest, tmp1, tmp2) \
   tmp1 = _mm_loadu_ps(addr1);                \
   tmp2 = _mm_loadu_ps(addr2);                \
@@ -248,7 +248,7 @@ namespace lambda {
 
     template<typename T>
     float DistanceFastL2<T>::norm(const T *a, unsigned size) const {
-        FLARE_CHECK(std::is_floating_point<T>::value) << "ERROR: FastL2 only defined for float currently.";
+        MELON_CHECK(std::is_floating_point<T>::value) << "ERROR: FastL2 only defined for float currently.";
         float result = 0;
 #ifdef __GNUC__
 #ifdef __AVX__
@@ -279,7 +279,7 @@ namespace lambda {
                  unpack[5] + unpack[6] + unpack[7];
 #else
 #ifdef __SSE2__
-#if defined(FLARE_PLATFORM_OSX)
+#if defined(MELON_PLATFORM_OSX)
 #define SSE_L2NORM(addr, dest, tmp) \
   tmp = _mm_loadu_ps(addr);      \
   tmp = _mm_mul_ps(tmp, tmp);    \
@@ -380,22 +380,22 @@ namespace lambda {
         return -result;
     }
 
-    template FLARE_EXPORT
+    template MELON_EXPORT
     class DistanceInnerProduct<float>;
 
-    template FLARE_EXPORT
+    template MELON_EXPORT
     class DistanceInnerProduct<int8_t>;
 
-    template FLARE_EXPORT
+    template MELON_EXPORT
     class DistanceInnerProduct<uint8_t>;
 
-    template FLARE_EXPORT
+    template MELON_EXPORT
     class DistanceFastL2<float>;
 
-    template FLARE_EXPORT
+    template MELON_EXPORT
     class DistanceFastL2<int8_t>;
 
-    template FLARE_EXPORT
+    template MELON_EXPORT
     class DistanceFastL2<uint8_t>;
 
 }  // namespace lambda

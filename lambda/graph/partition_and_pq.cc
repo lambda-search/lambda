@@ -13,8 +13,8 @@
 
 #include <omp.h>
 #include "mkl.h"
-#include "flare/container/robin_map.h"
-#include "flare/container/robin_set.h"
+#include "melon/container/robin_map.h"
+#include "melon/container/robin_set.h"
 #include "lambda/graph/binary_file.h"
 
 #if defined(RELEASE_UNUSED_TCMALLOC_MEMORY_AT_CHECKPOINTS) && \
@@ -36,7 +36,7 @@ namespace lambda {
     template<typename T>
     void gen_random_slice(const std::string base_file,
                           const std::string output_prefix, double sampling_rate) {
-        flare::sequential_read_file base_reader;
+        melon::sequential_read_file base_reader;
         auto rs = base_reader.open(base_file.c_str());
         std::ofstream sample_writer(std::string(output_prefix + "_data.bin").c_str(),
                                     std::ios::binary);
@@ -57,7 +57,7 @@ namespace lambda {
 
         base_reader.read((char *) &npts_u32, sizeof(uint32_t));
         base_reader.read((char *) &nd_u32, sizeof(uint32_t));
-        FLARE_LOG(INFO) << "Loading base " << base_file << ". #points: " << npts_u32
+        MELON_LOG(INFO) << "Loading base " << base_file << ". #points: " << npts_u32
                         << ". #dim: " << nd_u32 << ".";
         sample_writer.write((char *) &num_sampled_pts_u32, sizeof(uint32_t));
         sample_writer.write((char *) &nd_u32, sizeof(uint32_t));
@@ -84,7 +84,7 @@ namespace lambda {
         sample_id_writer.write((char *) &num_sampled_pts_u32, sizeof(uint32_t));
         sample_writer.close();
         sample_id_writer.close();
-        FLARE_LOG(INFO) << "Wrote " << num_sampled_pts_u32
+        MELON_LOG(INFO) << "Wrote " << num_sampled_pts_u32
                         << " points to sample file: " << output_prefix + "_data.bin";
     }
 
@@ -104,7 +104,7 @@ namespace lambda {
         std::vector<std::vector<float>> sampled_vectors;
 
         // create cached reader + writer
-        flare::sequential_read_file base_reader;
+        melon::sequential_read_file base_reader;
         base_reader.open(data_file.c_str());
 
         // metadata: npts, ndims
@@ -181,13 +181,13 @@ namespace lambda {
     // num_pq_chunks (if it divides dimension, else rounded) chunks, and runs
     // k-means in each chunk to compute the PQ pivots and stores in bin format in
     // file pq_pivots_path as a s num_centers*dim floating point binary file
-    flare::result_status generate_pq_pivots(const float *passed_train_data, size_t num_train,
+    melon::result_status generate_pq_pivots(const float *passed_train_data, size_t num_train,
                                             unsigned dim, unsigned num_centers,
                                             unsigned num_pq_chunks, unsigned max_k_means_reps,
                                             std::string pq_pivots_path, bool make_zero_mean) {
         if (num_pq_chunks > dim) {
-            FLARE_LOG(INFO) << " Error: number of chunks more than dimension";
-            return flare::result_status(-1, "Error: number of chunks more than dimension");
+            MELON_LOG(INFO) << " Error: number of chunks more than dimension";
+            return melon::result_status(-1, "Error: number of chunks more than dimension");
         }
 
         std::unique_ptr<float[]> train_data =
@@ -198,7 +198,7 @@ namespace lambda {
         for (uint64_t i = 0; i < num_train; i++) {
             for (uint64_t j = 0; j < dim; j++) {
                 if (passed_train_data[i * dim + j] != train_data[i * dim + j])
-                    FLARE_LOG(INFO) << "error in copy";
+                    MELON_LOG(INFO) << "error in copy";
             }
         }
 
@@ -209,8 +209,8 @@ namespace lambda {
             auto rs = lambda::binary_file::load_bin<float>(pq_pivots_path, full_pivot_data, file_num_centers,
                                                            file_dim, METADATA_SIZE);
             if (rs.is_ok() && file_dim == dim && file_num_centers == num_centers) {
-                FLARE_LOG(INFO) << "PQ pivot file exists. Not generating again";
-                return flare::result_status(-1, "PQ pivot file exists. Not generating again");
+                MELON_LOG(INFO) << "PQ pivot file exists. Not generating again";
+                return melon::result_status(-1, "PQ pivot file exists. Not generating again");
             }
         }
 
@@ -247,7 +247,7 @@ namespace lambda {
         size_t cur_bin_threshold = high_val;
 
         std::vector<std::vector<uint32_t>> bin_to_dims(num_pq_chunks);
-        flare::robin_map<uint32_t, uint32_t> dim_to_bin;
+        melon::robin_map<uint32_t, uint32_t> dim_to_bin;
         std::vector<float> bin_loads(num_pq_chunks, 0);
 
         // Process dimensions not inserted by previous loop
@@ -295,7 +295,7 @@ namespace lambda {
             std::unique_ptr<uint32_t[]> closest_center =
                     std::make_unique<uint32_t[]>(num_train);
 
-            FLARE_LOG(INFO) << "Processing chunk " << i << " with dimensions ["
+            MELON_LOG(INFO) << "Processing chunk " << i << " with dimensions ["
                             << chunk_offsets[i] << ", " << chunk_offsets[i + 1] << ")";
 
 #pragma omp parallel for schedule(static, 65536)
@@ -348,19 +348,19 @@ namespace lambda {
             return rs;
         }
 
-        FLARE_LOG(INFO) << "Saved pq pivot data to " << pq_pivots_path << " of size "
+        MELON_LOG(INFO) << "Saved pq pivot data to " << pq_pivots_path << " of size "
                         << cumul_bytes[cumul_bytes.size() - 1] << "B.";
 
-        return flare::result_status::success();
+        return melon::result_status::success();
     }
 
-    flare::result_status generate_opq_pivots(const float *passed_train_data, size_t num_train,
+    melon::result_status generate_opq_pivots(const float *passed_train_data, size_t num_train,
                                              unsigned dim, unsigned num_centers,
                                              unsigned num_pq_chunks, std::string opq_pivots_path,
                                              bool make_zero_mean) {
         if (num_pq_chunks > dim) {
-            FLARE_LOG(INFO) << " Error: number of chunks more than dimension";
-            return flare::result_status(-1, "Error: number of chunks more than dimension");
+            MELON_LOG(INFO) << " Error: number of chunks more than dimension";
+            return melon::result_status(-1, "Error: number of chunks more than dimension");
         }
 
         std::unique_ptr<float[]> train_data =
@@ -417,7 +417,7 @@ namespace lambda {
         size_t cur_bin_threshold = high_val;
 
         std::vector<std::vector<uint32_t>> bin_to_dims(num_pq_chunks);
-        flare::robin_map<uint32_t, uint32_t> dim_to_bin;
+        melon::robin_map<uint32_t, uint32_t> dim_to_bin;
         std::vector<float> bin_loads(num_pq_chunks, 0);
 
         // Process dimensions not inserted by previous loop
@@ -478,7 +478,7 @@ namespace lambda {
                 std::unique_ptr<uint32_t[]> closest_center =
                         std::make_unique<uint32_t[]>(num_train);
 
-                FLARE_LOG(INFO) << "Processing chunk " << i << " with dimensions ["
+                MELON_LOG(INFO) << "Processing chunk " << i << " with dimensions ["
                                 << chunk_offsets[i] << ", " << chunk_offsets[i + 1] << ")";
 
 #pragma omp parallel for schedule(static, 65536)
@@ -535,7 +535,7 @@ namespace lambda {
                     Umat.get(), (MKL_INT) dim, Vmat_T.get(), (MKL_INT) dim);
 
             if (errcode > 0) {
-                FLARE_LOG(INFO) << "SVD failed to converge.";
+                MELON_LOG(INFO) << "SVD failed to converge.";
                 exit(-1);
             }
 
@@ -575,7 +575,7 @@ namespace lambda {
             return rs;
         }
 
-        FLARE_LOG(INFO) << "Saved opq pivot data to " << opq_pivots_path << " of size "
+        MELON_LOG(INFO) << "Saved opq pivot data to " << opq_pivots_path << " of size "
                         << cumul_bytes[cumul_bytes.size() - 1] << "B.";
 
         std::string rotmat_path = opq_pivots_path + "_rotation_matrix.bin";
@@ -589,12 +589,12 @@ namespace lambda {
     // If the numbber of centers is < 256, it stores as byte vector, else as 4-byte
     // vector in binary format.
     template<typename T>
-    flare::result_status generate_pq_data_from_pivots(const std::string data_file,
+    melon::result_status generate_pq_data_from_pivots(const std::string data_file,
                                                       unsigned num_centers, unsigned num_pq_chunks,
                                                       std::string pq_pivots_path,
                                                       std::string pq_compressed_vectors_path,
                                                       bool use_opq) {
-        flare::sequential_read_file base_reader;
+        melon::sequential_read_file base_reader;
         base_reader.open(data_file);
         uint32_t npts32;
         uint32_t basedim32;
@@ -611,8 +611,8 @@ namespace lambda {
         std::string inflated_pq_file = pq_compressed_vectors_path + "_inflated.bin";
 
         if (!file_exists(pq_pivots_path)) {
-            FLARE_LOG(ERROR) << "ERROR: PQ k-means pivot file not found";
-            return flare::result_status(-1, "PQ k-means pivot file not found");
+            MELON_LOG(ERROR) << "ERROR: PQ k-means pivot file not found";
+            return melon::result_status(-1, "PQ k-means pivot file not found");
         } else {
             size_t nr, nc;
             std::unique_ptr<uint64_t[]> file_offset_data;
@@ -622,10 +622,10 @@ namespace lambda {
                 return rs;
             }
             if (nr != 4) {
-                FLARE_LOG(INFO) << "Error reading pq_pivots file " << pq_pivots_path
+                MELON_LOG(INFO) << "Error reading pq_pivots file " << pq_pivots_path
                                 << ". Offsets dont contain correct metadata, # offsets = "
                                 << nr << ", but expecting 4.";
-                return flare::result_status(-1, "Error reading pq_pivots file at offsets data. {} {}", __LINE__,
+                return melon::result_status(-1, "Error reading pq_pivots file at offsets data. {} {}", __LINE__,
                                             __FILE__);
             }
 
@@ -636,11 +636,11 @@ namespace lambda {
             }
 
             if ((nr != num_centers) || (nc != dim)) {
-                FLARE_LOG(INFO) << "Error reading pq_pivots file " << pq_pivots_path
+                MELON_LOG(INFO) << "Error reading pq_pivots file " << pq_pivots_path
                                 << ". file_num_centers  = " << nr << ", file_dim = " << nc
                                 << " but expecting " << num_centers << " centers in " << dim
                                 << " dimensions.";
-                return flare::result_status(-1, "Error reading pq_pivots file at offsets data. {} {}", __LINE__,
+                return melon::result_status(-1, "Error reading pq_pivots file at offsets data. {} {}", __LINE__,
                                             __FILE__);
             }
 
@@ -651,10 +651,10 @@ namespace lambda {
             }
 
             if ((nr != dim) || (nc != 1)) {
-                FLARE_LOG(INFO) << "Error reading pq_pivots file " << pq_pivots_path
+                MELON_LOG(INFO) << "Error reading pq_pivots file " << pq_pivots_path
                                 << ". file_dim  = " << nr << ", file_cols = " << nc
                                 << " but expecting " << dim << " entries in 1 dimension.";
-                return flare::result_status(-1, "Error reading pq_pivots file at offsets data. {} {}", __LINE__,
+                return melon::result_status(-1, "Error reading pq_pivots file at offsets data. {} {}", __LINE__,
                                             __FILE__);
             }
 
@@ -665,9 +665,9 @@ namespace lambda {
             }
 
             if (nr != (uint64_t) num_pq_chunks + 1 || nc != 1) {
-                FLARE_LOG(INFO) << "Error reading pq_pivots file at chunk offsets; file has nr=" << nr
+                MELON_LOG(INFO) << "Error reading pq_pivots file at chunk offsets; file has nr=" << nr
                                 << ",nc=" << nc << ", expecting nr=" << num_pq_chunks + 1 << ", nc=1.";
-                return flare::result_status(-1, "Error reading pq_pivots file at chunk offsets data. {} {}", __LINE__,
+                return melon::result_status(-1, "Error reading pq_pivots file at chunk offsets data. {} {}", __LINE__,
                                             __FILE__);
             }
 
@@ -678,12 +678,12 @@ namespace lambda {
                     return rs;
                 }
                 if (nr != (uint64_t) dim || nc != dim) {
-                    FLARE_LOG(INFO) << "Error reading rotation matrix file.";
-                    return flare::result_status(-1, "Error reading rotation matrix file. {} {}", __LINE__, __FILE__);
+                    MELON_LOG(INFO) << "Error reading rotation matrix file.";
+                    return melon::result_status(-1, "Error reading rotation matrix file. {} {}", __LINE__, __FILE__);
                 }
             }
 
-            FLARE_LOG(INFO) << "Loaded PQ pivot information";
+            MELON_LOG(INFO) << "Loaded PQ pivot information";
         }
 
         std::ofstream compressed_file_writer(pq_compressed_vectors_path,
@@ -728,7 +728,7 @@ namespace lambda {
             lambda::convert_types<T, float>(block_data_T.get(), block_data_tmp.get(),
                                             cur_blk_size, dim);
 
-            FLARE_LOG(INFO) << "Processing points  [" << start_id << ", " << end_id
+            MELON_LOG(INFO) << "Processing points  [" << start_id << ", " << end_id
                             << ").." << std::flush;
 
             for (uint64_t p = 0; p < cur_blk_size; p++) {
@@ -812,7 +812,7 @@ namespace lambda {
             inflated_file_writer.write((char *) (block_inflated_base.get()),
                                        cur_blk_size * dim * sizeof(float));
 #endif
-            FLARE_LOG(INFO) << ".done.";
+            MELON_LOG(INFO) << ".done.";
         }
 // Gopal. Splitting diskann_dll into separate DLLs for search and build.
 // This code should only be available in the "build" DLL.
@@ -824,7 +824,7 @@ namespace lambda {
 #ifdef SAVE_INFLATED_PQ
         inflated_file_writer.close();
 #endif
-        return flare::result_status::success();
+        return melon::result_status::success();
     }
 
     int estimate_cluster_sizes(float *test_data_float, size_t num_test,
@@ -864,11 +864,11 @@ namespace lambda {
             }
         }
 
-        FLARE_LOG(INFO) << "Estimated cluster sizes: ";
+        MELON_LOG(INFO) << "Estimated cluster sizes: ";
         for (size_t i = 0; i < num_centers; i++) {
             uint32_t cur_shard_count = (uint32_t) shard_counts[i];
             cluster_sizes.push_back((size_t) cur_shard_count);
-            FLARE_LOG(INFO) << cur_shard_count << " ";
+            MELON_LOG(INFO) << cur_shard_count << " ";
         }
         delete[] shard_counts;
         delete[] block_closest_centers;
@@ -879,7 +879,7 @@ namespace lambda {
     int shard_data_into_clusters(const std::string data_file, float *pivots,
                                  const size_t num_centers, const size_t dim,
                                  const size_t k_base, std::string prefix_path) {
-        flare::sequential_read_file base_reader;
+        melon::sequential_read_file base_reader;
         base_reader.open(data_file);
         uint32_t npts32;
         uint32_t basedim32;
@@ -887,7 +887,7 @@ namespace lambda {
         base_reader.read((char *) &basedim32, sizeof(uint32_t));
         size_t num_points = npts32;
         if (basedim32 != dim) {
-            FLARE_LOG(ERROR) << "Error. dimensions dont match for train set and base set";
+            MELON_LOG(ERROR) << "Error. dimensions dont match for train set and base set";
             return -1;
         }
 
@@ -951,11 +951,11 @@ namespace lambda {
         }
 
         size_t total_count = 0;
-        FLARE_LOG(INFO) << "Actual shard sizes: " << std::flush;
+        MELON_LOG(INFO) << "Actual shard sizes: " << std::flush;
         for (size_t i = 0; i < num_centers; i++) {
             uint32_t cur_shard_count = (uint32_t) shard_counts[i];
             total_count += cur_shard_count;
-            FLARE_LOG(INFO) << cur_shard_count << " ";
+            MELON_LOG(INFO) << cur_shard_count << " ";
             shard_data_writer[i].seekp(0);
             shard_data_writer[i].write((char *) &cur_shard_count, sizeof(uint32_t));
             shard_data_writer[i].close();
@@ -964,7 +964,7 @@ namespace lambda {
             shard_idmap_writer[i].close();
         }
 
-        FLARE_LOG(INFO) << "\n Partitioned " << num_points
+        MELON_LOG(INFO) << "\n Partitioned " << num_points
                         << " with replication factor " << k_base << " to get "
                         << total_count << " points across " << num_centers << " shards ";
         return 0;
@@ -977,7 +977,7 @@ namespace lambda {
                                           float *pivots, const size_t num_centers,
                                           const size_t dim, const size_t k_base,
                                           std::string prefix_path) {
-        flare::sequential_read_file base_reader;
+        melon::sequential_read_file base_reader;
         base_reader.open(data_file);
         uint32_t npts32;
         uint32_t basedim32;
@@ -985,7 +985,7 @@ namespace lambda {
         base_reader.read((char *) &basedim32, sizeof(uint32_t));
         size_t num_points = npts32;
         if (basedim32 != dim) {
-            FLARE_LOG(ERROR) << "Error. dimensions dont match for train set and base set";
+            MELON_LOG(ERROR) << "Error. dimensions dont match for train set and base set";
             return -1;
         }
 
@@ -1041,27 +1041,27 @@ namespace lambda {
         }
 
         size_t total_count = 0;
-        FLARE_LOG(INFO) << "Actual shard sizes: " << std::flush;
+        MELON_LOG(INFO) << "Actual shard sizes: " << std::flush;
         for (size_t i = 0; i < num_centers; i++) {
             uint32_t cur_shard_count = (uint32_t) shard_counts[i];
             total_count += cur_shard_count;
-            FLARE_LOG(INFO) << cur_shard_count << " ";
+            MELON_LOG(INFO) << cur_shard_count << " ";
             shard_idmap_writer[i].seekp(0);
             shard_idmap_writer[i].write((char *) &cur_shard_count, sizeof(uint32_t));
             shard_idmap_writer[i].close();
         }
 
-        FLARE_LOG(INFO) << "\n Partitioned " << num_points
+        MELON_LOG(INFO) << "\n Partitioned " << num_points
                         << " with replication factor " << k_base << " to get "
                         << total_count << " points across " << num_centers << " shards ";
         return 0;
     }
 
     template<typename T>
-    flare::result_status retrieve_shard_data_from_ids(const std::string data_file,
+    melon::result_status retrieve_shard_data_from_ids(const std::string data_file,
                                                       std::string idmap_filename,
                                                       std::string data_filename) {
-        flare::sequential_read_file base_reader;
+        melon::sequential_read_file base_reader;
         base_reader.open(data_file);
         uint32_t npts32;
         uint32_t basedim32;
@@ -1084,7 +1084,7 @@ namespace lambda {
         }
         uint32_t cur_pos = 0;
         uint32_t num_written = 0;
-        FLARE_LOG(INFO) << "Shard has " << shard_size << " points";
+        MELON_LOG(INFO) << "Shard has " << shard_size << " points";
 
         size_t block_size = num_points <= BLOCK_SIZE ? num_points : BLOCK_SIZE;
         std::unique_ptr<T[]> block_data_T = std::make_unique<T[]>(block_size * dim);
@@ -1114,13 +1114,13 @@ namespace lambda {
                 break;
         }
 
-        FLARE_LOG(INFO) << "Written file with " << num_written << " points";
+        MELON_LOG(INFO) << "Written file with " << num_written << " points";
 
         shard_data_writer.seekp(0);
         shard_data_writer.write((char *) &num_written, sizeof(uint32_t));
         shard_data_writer.close();
         delete[] shard_ids;
-        return flare::result_status::success();
+        return melon::result_status::success();
     }
 
     // partitions a large base file into many shards using k-means hueristic
@@ -1130,7 +1130,7 @@ namespace lambda {
     // The total number of points across all shards will be k_base * num_points.
 
     template<typename T>
-    flare::result_status partition(const std::string data_file, const float sampling_rate,
+    melon::result_status partition(const std::string data_file, const float sampling_rate,
                                    size_t num_parts, size_t max_k_means_reps,
                                    const std::string prefix_path, size_t k_base) {
         size_t train_dim;
@@ -1153,14 +1153,14 @@ namespace lambda {
         pivot_data = new float[num_parts * train_dim];
 
         // Process Global k-means for kmeans_partitioning Step
-        FLARE_LOG(INFO) << "Processing global k-means (kmeans_partitioning Step)";
+        MELON_LOG(INFO) << "Processing global k-means (kmeans_partitioning Step)";
         kmeans::kmeanspp_selecting_pivots(train_data_float, num_train, train_dim,
                                           pivot_data, num_parts);
 
         kmeans::run_lloyds(train_data_float, num_train, train_dim, pivot_data,
                            num_parts, max_k_means_reps, NULL, NULL);
 
-        FLARE_LOG(INFO) << "Saving global k-center pivots";
+        MELON_LOG(INFO) << "Saving global k-center pivots";
         auto rs = lambda::binary_file::save_bin<float>(output_file.c_str(), pivot_data, (size_t) num_parts,
                                                        train_dim);
         if (!rs.is_ok()) {
@@ -1174,11 +1174,11 @@ namespace lambda {
                                     k_base, prefix_path);
         delete[] pivot_data;
         delete[] train_data_float;
-        return flare::result_status::success();
+        return melon::result_status::success();
     }
 
     template<typename T>
-    flare::result_status partition_with_ram_budget(const std::string data_file,
+    melon::result_status partition_with_ram_budget(const std::string data_file,
                                                    const double sampling_rate, double ram_budget,
                                                    size_t graph_degree,
                                                    const std::string prefix_path, size_t k_base, int *ret) {
@@ -1218,7 +1218,7 @@ namespace lambda {
 
             pivot_data = new float[num_parts * train_dim];
             // Process Global k-means for kmeans_partitioning Step
-            FLARE_LOG(INFO) << "Processing global k-means (kmeans_partitioning Step)";
+            MELON_LOG(INFO) << "Processing global k-means (kmeans_partitioning Step)";
             lambda::kmeans::kmeanspp_selecting_pivots(train_data_float, num_train, train_dim,
                                                       pivot_data, num_parts);
 
@@ -1242,7 +1242,7 @@ namespace lambda {
                 if (cur_shard_ram_estimate > max_ram_usage)
                     max_ram_usage = cur_shard_ram_estimate;
             }
-            FLARE_LOG(INFO) << "With " << num_parts << " parts, max estimated RAM usage: "
+            MELON_LOG(INFO) << "With " << num_parts << " parts, max estimated RAM usage: "
                             << max_ram_usage / (1024 * 1024 * 1024)
                             << "GB, budget given is " << ram_budget;
             if (max_ram_usage > 1024 * 1024 * 1024 * ram_budget) {
@@ -1251,7 +1251,7 @@ namespace lambda {
             }
         }
 
-        FLARE_LOG(INFO) << "Saving global k-center pivots";
+        MELON_LOG(INFO) << "Saving global k-center pivots";
         auto rs = lambda::binary_file::save_bin<float>(output_file.c_str(), pivot_data, (size_t) num_parts,
                                                        train_dim);
         if (rs.is_ok()) {
@@ -1264,94 +1264,94 @@ namespace lambda {
         delete[] train_data_float;
         delete[] test_data_float;
         *ret = num_parts;
-        return flare::result_status::success();
+        return melon::result_status::success();
     }
 
 // Instantations of supported templates
 
-    template void FLARE_EXPORT
+    template void MELON_EXPORT
     gen_random_slice<int8_t>(const std::string base_file,
                              const std::string output_prefix, double sampling_rate);
 
-    template void FLARE_EXPORT gen_random_slice<uint8_t>(
+    template void MELON_EXPORT gen_random_slice<uint8_t>(
             const std::string base_file, const std::string output_prefix,
             double sampling_rate);
 
-    template void FLARE_EXPORT
+    template void MELON_EXPORT
     gen_random_slice<float>(const std::string base_file,
                             const std::string output_prefix, double sampling_rate);
 
-    template void FLARE_EXPORT
+    template void MELON_EXPORT
     gen_random_slice<float>(const float *inputdata, size_t npts, size_t ndims,
                             double p_val, float *&sampled_data, size_t &slice_size);
 
-    template void FLARE_EXPORT gen_random_slice<uint8_t>(
+    template void MELON_EXPORT gen_random_slice<uint8_t>(
             const uint8_t *inputdata, size_t npts, size_t ndims, double p_val,
             float *&sampled_data, size_t &slice_size);
 
-    template void FLARE_EXPORT gen_random_slice<int8_t>(
+    template void MELON_EXPORT gen_random_slice<int8_t>(
             const int8_t *inputdata, size_t npts, size_t ndims, double p_val,
             float *&sampled_data, size_t &slice_size);
 
-    template void FLARE_EXPORT gen_random_slice<float>(
+    template void MELON_EXPORT gen_random_slice<float>(
             const std::string data_file, double p_val, float *&sampled_data,
             size_t &slice_size, size_t &ndims);
 
-    template void FLARE_EXPORT gen_random_slice<uint8_t>(
+    template void MELON_EXPORT gen_random_slice<uint8_t>(
             const std::string data_file, double p_val, float *&sampled_data,
             size_t &slice_size, size_t &ndims);
 
-    template void FLARE_EXPORT gen_random_slice<int8_t>(
+    template void MELON_EXPORT gen_random_slice<int8_t>(
             const std::string data_file, double p_val, float *&sampled_data,
             size_t &slice_size, size_t &ndims);
 
-    template FLARE_EXPORT flare::result_status partition<int8_t>(
+    template MELON_EXPORT melon::result_status partition<int8_t>(
             const std::string data_file, const float sampling_rate, size_t num_centers,
             size_t max_k_means_reps, const std::string prefix_path, size_t k_base);
 
-    template FLARE_EXPORT flare::result_status partition<uint8_t>(
+    template MELON_EXPORT melon::result_status partition<uint8_t>(
             const std::string data_file, const float sampling_rate, size_t num_centers,
             size_t max_k_means_reps, const std::string prefix_path, size_t k_base);
 
-    template FLARE_EXPORT flare::result_status partition<float>(
+    template MELON_EXPORT melon::result_status partition<float>(
             const std::string data_file, const float sampling_rate, size_t num_centers,
             size_t max_k_means_reps, const std::string prefix_path, size_t k_base);
 
-    template FLARE_EXPORT flare::result_status partition_with_ram_budget<int8_t>(
+    template MELON_EXPORT melon::result_status partition_with_ram_budget<int8_t>(
             const std::string data_file, const double sampling_rate, double ram_budget,
             size_t graph_degree, const std::string prefix_path, size_t k_base, int *ret);
 
-    template FLARE_EXPORT flare::result_status partition_with_ram_budget<uint8_t>(
+    template MELON_EXPORT melon::result_status partition_with_ram_budget<uint8_t>(
             const std::string data_file, const double sampling_rate, double ram_budget,
             size_t graph_degree, const std::string prefix_path, size_t k_base, int *ret);
 
-    template FLARE_EXPORT flare::result_status partition_with_ram_budget<float>(
+    template MELON_EXPORT melon::result_status partition_with_ram_budget<float>(
             const std::string data_file, const double sampling_rate, double ram_budget,
             size_t graph_degree, const std::string prefix_path, size_t k_base, int *ret);
 
-    template FLARE_EXPORT flare::result_status retrieve_shard_data_from_ids<float>(
+    template MELON_EXPORT melon::result_status retrieve_shard_data_from_ids<float>(
             const std::string data_file, std::string idmap_filename,
             std::string data_filename);
 
-    template FLARE_EXPORT flare::result_status retrieve_shard_data_from_ids<uint8_t>(
+    template MELON_EXPORT melon::result_status retrieve_shard_data_from_ids<uint8_t>(
             const std::string data_file, std::string idmap_filename,
             std::string data_filename);
 
-    template FLARE_EXPORT flare::result_status retrieve_shard_data_from_ids<int8_t>(
+    template MELON_EXPORT melon::result_status retrieve_shard_data_from_ids<int8_t>(
             const std::string data_file, std::string idmap_filename,
             std::string data_filename);
 
-    template FLARE_EXPORT flare::result_status generate_pq_data_from_pivots<int8_t>(
+    template MELON_EXPORT melon::result_status generate_pq_data_from_pivots<int8_t>(
             const std::string data_file, unsigned num_centers, unsigned num_pq_chunks,
             std::string pq_pivots_path, std::string pq_compressed_vectors_path,
             bool use_opq);
 
-    template FLARE_EXPORT flare::result_status generate_pq_data_from_pivots<uint8_t>(
+    template MELON_EXPORT melon::result_status generate_pq_data_from_pivots<uint8_t>(
             const std::string data_file, unsigned num_centers, unsigned num_pq_chunks,
             std::string pq_pivots_path, std::string pq_compressed_vectors_path,
             bool use_opq);
 
-    template FLARE_EXPORT flare::result_status generate_pq_data_from_pivots<float>(
+    template MELON_EXPORT melon::result_status generate_pq_data_from_pivots<float>(
             const std::string data_file, unsigned num_centers, unsigned num_pq_chunks,
             std::string pq_pivots_path, std::string pq_compressed_vectors_path,
             bool use_opq);

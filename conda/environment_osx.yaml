@@ -8,6 +8,7 @@ dependencies:
   - clangxx #   [osx]
   - make
   - libfaiss_ex =1.7.2
-  - libflare
+  - melon
+  - mkl
   - gtest =1.11.0
   - gmock =1.11.0

@@ -4,8 +4,8 @@
 #include <thread>
 
 #include "lambda/hnsw/hnswlib.h"
-#include "flare/strings/numbers.h"
-#include "flare/strings/str_split.h"
+#include "melon/strings/numbers.h"
+#include "melon/strings/str_split.h"
 
 DEFINE_bool(hnswlib_dynamic_kr, true, "Dynamic to set lambda argmuent for hnswlib index");
 
@@ -21,21 +21,21 @@ namespace lambda {
     // initializes the index from with no elements
     int hnsw_index::init_new_index(const hnsw_param &param, const size_t random_seed) {
         if (appr_alg_) {
-            FLARE_LOG(ERROR) << "The index is already initiated.";
+            MELON_LOG(ERROR) << "The index is already initiated.";
             return -1;
         }
         try {
             appr_alg_ = new hnswlib::HierarchicalNSW<float>(
                     l2space_, param.max_elements, param.m, param.kr_construction, random_seed);
         } catch (std::exception &e) {
-            FLARE_LOG(ERROR) << "HNSWLIB exception: " << e.what();
+            MELON_LOG(ERROR) << "HNSWLIB exception: " << e.what();
             return -1;
         } catch (...) {
-            FLARE_LOG(ERROR) << "Unkown exception";
+            MELON_LOG(ERROR) << "Unkown exception";
             return -1;
         }
         if (nullptr == appr_alg_) {
-            FLARE_LOG(ERROR) << "Fail to create HNSWLIB index.";
+            MELON_LOG(ERROR) << "Fail to create HNSWLIB index.";
             return -1;
         }
         index_inited_ = true;
@@ -44,20 +44,20 @@ namespace lambda {
     }
 
     void hnsw_index::init_params(hnsw_param &param) {
-        std::vector<std::string> opts = flare::string_split(index_conf_.conf().description(), ",");
+        std::vector<std::string> opts = melon::string_split(index_conf_.conf().description(), ",");
         for (const std::string &opt : opts) {
-            std::vector<std::string> kv = flare::string_split(opt, "=");
+            std::vector<std::string> kv = melon::string_split(opt, "=");
             if (kv.size() != 2) {
-                FLARE_LOG(ERROR) << "Invalid option:" << opt;
+                MELON_LOG(ERROR) << "Invalid option:" << opt;
                 continue;
             }
             int64_t v;
-            if (!flare::simple_atoi(kv[1], &v)) {
-                FLARE_LOG(ERROR) << "Invalid option:" << opt;
+            if (!melon::simple_atoi(kv[1], &v)) {
+                MELON_LOG(ERROR) << "Invalid option:" << opt;
                 continue;
             }
             if (v <= 0) {
-                FLARE_LOG(ERROR) << "Invalid option:" << opt;
+                MELON_LOG(ERROR) << "Invalid option:" << opt;
                 continue;
             }
             if (!strcasecmp(kv[0].c_str(), "m")) {
@@ -150,7 +150,7 @@ namespace lambda {
                 }
                 labels[position] = result_tuple.second;
                 result.pop();
-                // FLARE_LOG(INFO) << "row:" << row << ",position:" << position << ",labels:" << labels[position]
+                // MELON_LOG(INFO) << "row:" << row << ",position:" << position << ",labels:" << labels[position]
                 //          << ",distances:" << distances[position];
             }
         }
@@ -165,9 +165,9 @@ namespace lambda {
             try {
                 appr_alg_->markDelete(id);
             } catch (std::exception &e) {
-                FLARE_LOG(ERROR) << "Failed to delete id:" << id << " with err:" << e.what();
+                MELON_LOG(ERROR) << "Failed to delete id:" << id << " with err:" << e.what();
             } catch (...) {
-                FLARE_LOG(ERROR) << "Unkown exception";
+                MELON_LOG(ERROR) << "Unkown exception";
             }
         }
     }
@@ -183,23 +183,23 @@ namespace lambda {
         }
     }
 
-    int hnsw_index::load(const std::string &path_to_index, flare::write_lock &index_wlock) {
+    int hnsw_index::load(const std::string &path_to_index, melon::write_lock &index_wlock) {
         try {
             auto appr_alg_tmp = new hnswlib::HierarchicalNSW<float>(l2space_, path_to_index, false, 0);
             if (nullptr == appr_alg_tmp) {
                 return -1;
             }
-            FLARE_LOG(INFO) << "Calling load_index for an already inited index. Old index is being deallocated.";
-            std::lock_guard<flare::write_lock> guard(index_wlock);
+            MELON_LOG(INFO) << "Calling load_index for an already inited index. Old index is being deallocated.";
+            std::lock_guard<melon::write_lock> guard(index_wlock);
             if (appr_alg_) {
                 delete appr_alg_;
             }
             appr_alg_ = appr_alg_tmp;
         } catch (std::exception &e) {
-            FLARE_LOG(ERROR) << "Failed to load index:" << path_to_index << " with err:" << e.what();
+            MELON_LOG(ERROR) << "Failed to load index:" << path_to_index << " with err:" << e.what();
             return -1;
         } catch (...) {
-            FLARE_LOG(ERROR) << "Unkown exception";
+            MELON_LOG(ERROR) << "Unkown exception";
             return -1;
         }
         return 0;
@@ -211,10 +211,10 @@ namespace lambda {
                 appr_alg_->saveIndex(file);
             }
         } catch (std::exception &e) {
-            FLARE_LOG(ERROR) << "Failed to save index:" << file << " with err:" << e.what();
+            MELON_LOG(ERROR) << "Failed to save index:" << file << " with err:" << e.what();
             return -1;
         } catch (...) {
-            FLARE_LOG(ERROR) << "Unkown exception";
+            MELON_LOG(ERROR) << "Unkown exception";
             return -1;
         }
         return 0;
@@ -229,9 +229,9 @@ namespace lambda {
                 appr_alg_->resizeIndex(size() + 1024);
             }
         } catch (std::exception &e) {
-            FLARE_LOG(ERROR) << "Failed to shrink to fit with err:" << e.what();
+            MELON_LOG(ERROR) << "Failed to shrink to fit with err:" << e.what();
         } catch (...) {
-            FLARE_LOG(ERROR) << "Unkown exception";
+            MELON_LOG(ERROR) << "Unkown exception";
         }
     }
 
@@ -262,9 +262,9 @@ namespace lambda {
             }
             appr_alg_->addPoint(reinterpret_cast<void *>(vector), id);
         } catch (std::exception &e) {
-            FLARE_LOG(ERROR) << "Failed to add id:" << id << " with err:" << e.what();
+            MELON_LOG(ERROR) << "Failed to add id:" << id << " with err:" << e.what();
         } catch (...) {
-            FLARE_LOG(ERROR) << "Unkown exception";
+            MELON_LOG(ERROR) << "Unkown exception";
         }
     }
 
@@ -272,9 +272,9 @@ namespace lambda {
         try {
             return appr_alg_->template getDataByLabel<float>(id);
         } catch (std::exception &e) {
-            FLARE_LOG(ERROR) << "Failed to get vector by id:" << id << " with err:" << e.what();
+            MELON_LOG(ERROR) << "Failed to get vector by id:" << id << " with err:" << e.what();
         } catch (...) {
-            FLARE_LOG(ERROR) << "Unkown exception";
+            MELON_LOG(ERROR) << "Unkown exception";
         }
         return std::vector<float>();
     }
@@ -292,9 +292,9 @@ namespace lambda {
         try {
             return appr_alg_->searchKnn(static_cast<const void *>(vector), bitmap, k);
         } catch (std::exception &e) {
-            FLARE_LOG(ERROR) << "Failed to search index:" << index_conf_.index() << " with err:" << e.what();
+            MELON_LOG(ERROR) << "Failed to search index:" << index_conf_.index() << " with err:" << e.what();
         } catch (...) {
-            FLARE_LOG(ERROR) << "Unkown exception";
+            MELON_LOG(ERROR) << "Unkown exception";
         }
         return std::priority_queue<std::pair<float, size_t>>();
     }
@@ -303,9 +303,9 @@ namespace lambda {
         try {
             appr_alg_->markDelete(label);
         } catch (std::exception &e) {
-            FLARE_LOG(ERROR) << "Failed to delete label:" << label << " with err:" << e.what();
+            MELON_LOG(ERROR) << "Failed to delete label:" << label << " with err:" << e.what();
         } catch (...) {
-            FLARE_LOG(ERROR) << "Unkown exception";
+            MELON_LOG(ERROR) << "Unkown exception";
         }
     }
 
@@ -313,9 +313,9 @@ namespace lambda {
         try {
             appr_alg_->resizeIndex(new_size);
         } catch (std::exception &e) {
-            FLARE_LOG(ERROR) << "Failed to resize index to:" << new_size << " with err:" << e.what();
+            MELON_LOG(ERROR) << "Failed to resize index to:" << new_size << " with err:" << e.what();
         } catch (...) {
-            FLARE_LOG(ERROR) << "Unkown exception";
+            MELON_LOG(ERROR) << "Unkown exception";
         }
     }
 

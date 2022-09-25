@@ -4,11 +4,11 @@
 #include <memory>
 #include <vector>
 
-#include "flare/fiber/fiber.h"
-#include "flare/base/scoped_lock.h"
-#include "flare/log/logging.h"
-#include "flare/base/errno.h"
-#include "flare/thread/rw_lock.h"
+#include "melon/fiber/fiber.h"
+#include "melon/base/scoped_lock.h"
+#include "melon/log/logging.h"
+#include "melon/base/errno.h"
+#include "melon/thread/rw_lock.h"
 
 namespace lambda {
 
@@ -47,8 +47,8 @@ namespace lambda {
 
         private:
             const T *data_;
-            std::unique_lock<flare::read_lock> rl_;
-            FLARE_DISALLOW_COPY_AND_ASSIGN(ScopedPtr);
+            std::unique_lock<melon::read_lock> rl_;
+            MELON_DISALLOW_COPY_AND_ASSIGN(ScopedPtr);
         };
 
         doubly_buffered_data();
@@ -156,8 +156,8 @@ namespace lambda {
             return data_ + index;
         }
 
-        std::unique_lock<flare::read_lock> GetFGReadLock(int index) const {
-            return std::unique_lock<flare::read_lock>(*rlock_[index]);
+        std::unique_lock<melon::read_lock> GetFGReadLock(int index) const {
+            return std::unique_lock<melon::read_lock>(*rlock_[index]);
         }
 
         // Foreground and background void.
@@ -167,9 +167,9 @@ namespace lambda {
         std::atomic<int> index_;
 
         // Foreground and background bthread_rwlock
-        flare::rw_lock rwlock_[2];
-        std::shared_ptr<flare::read_lock> rlock_[2];
-        std::shared_ptr<flare::write_lock> wlock_[2];
+        melon::rw_lock rwlock_[2];
+        std::shared_ptr<melon::read_lock> rlock_[2];
+        std::shared_ptr<melon::write_lock> wlock_[2];
 
         // Sequence modifications.
         fiber_mutex_t modify_mutex_;
@@ -179,10 +179,10 @@ namespace lambda {
     doubly_buffered_data<T>::doubly_buffered_data()
             : index_(0) {
         fiber_mutex_init(&modify_mutex_, nullptr);
-        rlock_[0] = std::make_shared<flare::read_lock>(rwlock_[0]);
-        rlock_[1] = std::make_shared<flare::read_lock>(rwlock_[1]);
-        wlock_[0] = std::make_shared<flare::write_lock>(rwlock_[0]);
-        wlock_[1] = std::make_shared<flare::write_lock>(rwlock_[1]);
+        rlock_[0] = std::make_shared<melon::read_lock>(rwlock_[0]);
+        rlock_[1] = std::make_shared<melon::read_lock>(rwlock_[1]);
+        wlock_[0] = std::make_shared<melon::write_lock>(rwlock_[0]);
+        wlock_[1] = std::make_shared<melon::write_lock>(rwlock_[1]);
 
         // Initialize _data for some POD types. This is essential for pointer
         // types because they should be Read() as NULL before any Modify().
@@ -214,7 +214,7 @@ namespace lambda {
         // than _wrappers_mutex is to avoid blocking threads calling
         // AddWrapper() or RemoveWrapper() too long. Most of the time, modifications
         // are done by one thread, contention should be negligible.
-        FLARE_SCOPED_LOCK(modify_mutex_);
+        MELON_SCOPED_LOCK(modify_mutex_);
         int bg_index = !index_.load(std::memory_order_relaxed);
         // background instance is not accessed by other threads, being safe to
         // modify.
@@ -232,10 +232,10 @@ namespace lambda {
 
         // Wait until all threads finishes current reading. When they begin next
         // read, they should see updated _index.
-        std::unique_lock<flare::write_lock> bg_lock(*wlock_[bg_index]);
+        std::unique_lock<melon::write_lock> bg_lock(*wlock_[bg_index]);
 
         const size_t ret2 = fn(data_[bg_index]);
-        FLARE_CHECK_EQ(ret2, ret) << "index=" << index_.load(std::memory_order_relaxed);
+        MELON_CHECK_EQ(ret2, ret) << "index=" << index_.load(std::memory_order_relaxed);
         return ret2;
     }
 

@@ -1,7 +1,7 @@
 
 #include "lambda/faiss/faiss_index.h"
-#include <flare/log/logging.h>
-#include <flare/files/filesystem.h>
+#include <melon/log/logging.h>
+#include <melon/files/filesystem.h>
 #include "faiss/AutoTune.h"
 #include "faiss/IVFlib.h"
 #include "faiss/IndexBinaryFlat.h"
@@ -27,8 +27,8 @@ namespace lambda {
         const auto &conf = index_conf_.conf();
         std::string model_path = model;
         std::error_code ec;
-        if (!flare::exists(model_path, ec)) {
-            FLARE_LOG(ERROR) << "model file not exist: " << model_path;
+        if (!melon::exists(model_path, ec)) {
+            MELON_LOG(ERROR) << "model file not exist: " << model_path;
             return -1;
         }
 
@@ -36,17 +36,17 @@ namespace lambda {
         try {
             tmp = faiss::read_index(model_path.c_str(), 0);
         } catch (faiss::FaissException &e) {
-            FLARE_LOG(ERROR) << "Faiss exception: " << e.what();
+            MELON_LOG(ERROR) << "Faiss exception: " << e.what();
             return -1;
         } catch (std::exception &e) {
-            FLARE_LOG(ERROR) << "Faiss exception: " << e.what();
+            MELON_LOG(ERROR) << "Faiss exception: " << e.what();
             return -1;
         } catch (...) {
-            FLARE_LOG(ERROR) << "unkown exception";
+            MELON_LOG(ERROR) << "unkown exception";
             return -1;
         }
         if (nullptr == tmp) {
-            FLARE_LOG(ERROR) << "Fail to read index from model " << model_path << " with engine "
+            MELON_LOG(ERROR) << "Fail to read index from model " << model_path << " with engine "
                        << conf.engine();
             return -1;
         }
@@ -72,12 +72,12 @@ namespace lambda {
             // PCA nullptr
             if (nullptr != ivf) {
                 if (conf.dimension() != ivf->d) {
-                    FLARE_LOG(ERROR) << "index " << index_conf_.index() << " check failed, expect dimension "
+                    MELON_LOG(ERROR) << "index " << index_conf_.index() << " check failed, expect dimension "
                                << conf.dimension() << " but got " << ivf->d;
                     return false;
                 }
                 if (static_cast<faiss::MetricType>(conf.metric()) != ivf->metric_type) {
-                    FLARE_LOG(ERROR) << "index " << index_conf_.index() << " check failed, expect metric "
+                    MELON_LOG(ERROR) << "index " << index_conf_.index() << " check failed, expect metric "
                                << conf.metric() << " but got " << ivf->metric_type;
                     ivf->metric_type = static_cast<faiss::MetricType>(conf.metric());
                 }
@@ -93,11 +93,11 @@ namespace lambda {
                 support_update_ = true;
             }
         } catch (faiss::FaissException &e) {
-            FLARE_LOG(ERROR) << "Faiss exception: " << e.what();
+            MELON_LOG(ERROR) << "Faiss exception: " << e.what();
         } catch (std::exception &e) {
-            FLARE_LOG(ERROR) << "Faiss exception: " << e.what();
+            MELON_LOG(ERROR) << "Faiss exception: " << e.what();
         } catch (...) {
-            FLARE_LOG(ERROR) << "unkown exception";
+            MELON_LOG(ERROR) << "unkown exception";
         }
         return true;
     }
@@ -119,18 +119,18 @@ namespace lambda {
 
     void FaissIndex::add_with_ids(const std::vector<int64_t> &ids, std::vector<float> &vecs) {
         if (nullptr == index_) {
-            FLARE_LOG(ERROR) << "index " << index_conf_.index() << ", shard " << index_conf_.shard_idx()
+            MELON_LOG(ERROR) << "index " << index_conf_.index() << ", shard " << index_conf_.shard_idx()
                        << " is not initialized";
             return;
         }
         try {
             index_->add_with_ids(ids.size(), vecs.data(), ids.data());
         } catch (faiss::FaissException &e) {
-            FLARE_LOG(ERROR) << "Faiss exception: " << e.what();
+            MELON_LOG(ERROR) << "Faiss exception: " << e.what();
         } catch (std::exception &e) {
-            FLARE_LOG(ERROR) << "Faiss exception: " << e.what();
+            MELON_LOG(ERROR) << "Faiss exception: " << e.what();
         } catch (...) {
-            FLARE_LOG(ERROR) << "unkown exception";
+            MELON_LOG(ERROR) << "unkown exception";
         }
     }
 
@@ -161,11 +161,11 @@ namespace lambda {
                 }
             }
         } catch (faiss::FaissException &e) {
-            FLARE_LOG(ERROR) << "Faiss exception: " << e.what();
+            MELON_LOG(ERROR) << "Faiss exception: " << e.what();
         } catch (std::exception &e) {
-            FLARE_LOG(ERROR) << "Faiss exception: " << e.what();
+            MELON_LOG(ERROR) << "Faiss exception: " << e.what();
         } catch (...) {
-            FLARE_LOG(ERROR) << "unkown exception";
+            MELON_LOG(ERROR) << "unkown exception";
         }
     }
 
@@ -192,11 +192,11 @@ namespace lambda {
                   option.n, option.vecs.data(), option.k, distances.data(), labels.data(), filter);
             }
         } catch (faiss::FaissException &e) {
-            FLARE_LOG(ERROR) << "Faiss exception: " << e.what();
+            MELON_LOG(ERROR) << "Faiss exception: " << e.what();
         } catch (std::exception &e) {
-            FLARE_LOG(ERROR) << "Faiss exception: " << e.what();
+            MELON_LOG(ERROR) << "Faiss exception: " << e.what();
         } catch (...) {
-            FLARE_LOG(ERROR) << "unkown exception";
+            MELON_LOG(ERROR) << "unkown exception";
         }
     }
 
@@ -222,11 +222,11 @@ namespace lambda {
         try {
             index_->remove_ids(ids);
         } catch (faiss::FaissException &e) {
-            FLARE_LOG(ERROR) << "Faiss exception: " << e.what();
+            MELON_LOG(ERROR) << "Faiss exception: " << e.what();
         } catch (std::exception &e) {
-            FLARE_LOG(ERROR) << "Faiss exception: " << e.what();
+            MELON_LOG(ERROR) << "Faiss exception: " << e.what();
         } catch (...) {
-            FLARE_LOG(ERROR) << "unkown exception";
+            MELON_LOG(ERROR) << "unkown exception";
         }
     }
 
@@ -242,11 +242,11 @@ namespace lambda {
             index_->remove_ids(sel);
             add_with_ids(ids, vecs);
         } catch (faiss::FaissException &e) {
-            FLARE_LOG(ERROR) << "Faiss exception: " << e.what();
+            MELON_LOG(ERROR) << "Faiss exception: " << e.what();
         } catch (std::exception &e) {
-            FLARE_LOG(ERROR) << "Faiss exception: " << e.what();
+            MELON_LOG(ERROR) << "Faiss exception: " << e.what();
         } catch (...) {
-            FLARE_LOG(ERROR) << "unkown exception";
+            MELON_LOG(ERROR) << "unkown exception";
         }
     }
 
@@ -258,7 +258,7 @@ namespace lambda {
         index_ = nullptr;
     }
 
-    int FaissIndex::load(const std::string &file, flare::write_lock &index_wlock) {
+    int FaissIndex::load(const std::string &file, melon::write_lock &index_wlock) {
         try {
             faiss::Index *tmp = faiss::read_index(file.c_str(), 0);
             if (!check_index(tmp)) {
@@ -267,17 +267,17 @@ namespace lambda {
                 return -1;
             }
             if (nullptr != tmp) {
-                std::lock_guard<flare::write_lock> guard(index_wlock);
+                std::lock_guard<melon::write_lock> guard(index_wlock);
                 clear();
                 index_ = tmp;
                 return 0;
             }
         } catch (faiss::FaissException &e) {
-            FLARE_LOG(ERROR) << "Faiss exception: " << e.what();
+            MELON_LOG(ERROR) << "Faiss exception: " << e.what();
         } catch (std::exception &e) {
-            FLARE_LOG(ERROR) << "Faiss exception: " << e.what();
+            MELON_LOG(ERROR) << "Faiss exception: " << e.what();
         } catch (...) {
-            FLARE_LOG(ERROR) << "unkown exception";
+            MELON_LOG(ERROR) << "unkown exception";
         }
         return -1;
     }
@@ -289,11 +289,11 @@ namespace lambda {
         try {
             faiss::write_index(index_, file.c_str());
         } catch (faiss::FaissException &e) {
-            FLARE_LOG(ERROR) << "Faiss exception: " << e.what();
+            MELON_LOG(ERROR) << "Faiss exception: " << e.what();
         } catch (std::exception &e) {
-            FLARE_LOG(ERROR) << "Faiss exception: " << e.what();
+            MELON_LOG(ERROR) << "Faiss exception: " << e.what();
         } catch (...) {
-            FLARE_LOG(ERROR) << "unkown exception";
+            MELON_LOG(ERROR) << "unkown exception";
         }
         return 0;
     }

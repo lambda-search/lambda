@@ -10,7 +10,7 @@
 #include <vector>
 
 #include "lambda/common/roaring.hh"
-#include "flare/thread/rw_lock.h"
+#include "melon/thread/rw_lock.h"
 #include "lambda/proto/types.pb.h"
 
 namespace lambda {
@@ -62,7 +62,7 @@ namespace lambda {
 
         virtual void clear() = 0;
 
-        virtual int load(const std::string &file, flare::write_lock &index_wlock) = 0;
+        virtual int load(const std::string &file, melon::write_lock &index_wlock) = 0;
 
         virtual int save(const std::string &file) = 0;
 

@@ -13,20 +13,20 @@
 #include <shared_mutex>
 #include <sstream>
 #include <string>
-#include <flare/container/robin_set.h>
-#include <flare/files/filesystem.h>
-#include <flare/container/robin_map.h>
-#include <flare/times/time.h>
+#include <melon/container/robin_set.h>
+#include <melon/files/filesystem.h>
+#include <melon/container/robin_map.h>
+#include <melon/times/time.h>
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <time.h>
-#include "flare/log/logging.h"
+#include "melon/log/logging.h"
 #include "aligned_file_reader.h"
 #include "lambda/common/math_utils.h"
 #include "parameters.h"
 #include "partition_and_pq.h"
 #include "utils.h"
-#include <flare/base/profile.h>
+#include <melon/base/profile.h>
 #include "lambda/graph/binary_file.h"
 #include "lambda/common/memory.h"
 
@@ -35,7 +35,7 @@
 #include "gperftools/malloc_extension.h"
 #endif
 
-#include "flare/container/dynamic_bitset.h"
+#include "melon/container/dynamic_bitset.h"
 #include "index.h"
 
 #define MAX_POINTS_FOR_USING_BITSET 10000000
@@ -54,14 +54,14 @@ namespace lambda {
     }
 
     template<typename T>
-    flare::result_status in_mem_query_scratch<T>::setup(uint32_t search_l, uint32_t indexing_l,
+    melon::result_status in_mem_query_scratch<T>::setup(uint32_t search_l, uint32_t indexing_l,
                                                      uint32_t r, size_t dim) {
         if (search_l == 0 || indexing_l == 0 || r == 0 || dim == 0) {
             std::stringstream ss;
             ss << "In in_mem_query_scratch, one of search_l = " << search_l
                << ", indexing_l = " << indexing_l << ", dim = " << dim
                << " or r = " << r << " is zero.\n";
-            return flare::result_status(-1, ss.str());
+            return melon::result_status(-1, ss.str());
         }
         indices = new uint32_t[search_l];     // only used by search
         interim_dists = new float[search_l];  // only used by search
@@ -82,14 +82,14 @@ namespace lambda {
         _des->reserve(2 * r);
         _pool = new std::vector<neighbor>();
         _pool->reserve(l_to_use * 10);
-        _visited = new flare::robin_set<unsigned>();
+        _visited = new melon::robin_set<unsigned>();
         _visited->reserve(l_to_use * 2);
         _best_l_nodes = new std::vector<neighbor>();
         _best_l_nodes->resize(l_to_use + 1);
-        _inserted_into_pool_rs = new flare::robin_set<unsigned>();
+        _inserted_into_pool_rs = new melon::robin_set<unsigned>();
         _inserted_into_pool_rs->reserve(l_to_use * 20);
-        _inserted_into_pool_bs = new flare::dynamic_bitset<>();
-        return flare::result_status::success();
+        _inserted_into_pool_bs = new melon::dynamic_bitset<>();
+        return melon::result_status::success();
     }
 
     template<typename T>
@@ -228,10 +228,10 @@ namespace lambda {
               _support_eager_delete(support_eager_delete),
               _conc_consolidate(concurrent_consolidate) {
         if (dynamic_index && !enable_tags) {
-            FLARE_CHECK(false) << "ERROR: Dynamic Indexing must have tags enabled.";
+            MELON_CHECK(false) << "ERROR: Dynamic Indexing must have tags enabled.";
         }
         if (support_eager_delete && !dynamic_index) {
-            FLARE_CHECK(false) << "ERROR: Eager deletes must have dynamic indexing enabled.";
+            MELON_CHECK(false) << "ERROR: Eager deletes must have dynamic indexing enabled.";
         }
 
         // data stored to _nd * aligned_dim matrix with necessary zero-padding
@@ -264,7 +264,7 @@ namespace lambda {
             // This is safe because T is float inside the if block.
             this->_distance = (vector_distance<T> *) new AVXNormalizedCosineDistanceFloat();
             this->_normalize_vecs = true;
-            FLARE_LOG(INFO) << "Normalizing vectors and using L2 for cosine "
+            MELON_LOG(INFO) << "Normalizing vectors and using L2 for cosine "
                                "AVXNormalizedCosineDistanceFloat().";
         } else {
             this->_distance = get_distance_function<T>(m);
@@ -316,7 +316,7 @@ namespace lambda {
     }
 
     template<typename T, typename TagT>
-    flare::result_status Index<T, TagT>::initialize_query_scratch(uint32_t num_threads,
+    melon::result_status Index<T, TagT>::initialize_query_scratch(uint32_t num_threads,
                                                   uint32_t search_l,
                                                   uint32_t indexing_l, uint32_t r,
                                                   size_t dim) {
@@ -328,14 +328,14 @@ namespace lambda {
             }
             _query_scratch.push(scratch);
         }
-        return flare::result_status::success();
+        return melon::result_status::success();
     }
 
     template<typename T, typename TagT>
-    flare::result_status Index<T, TagT>::save_tags(std::string tags_file, size_t *tag_bytes_written) {
+    melon::result_status Index<T, TagT>::save_tags(std::string tags_file, size_t *tag_bytes_written) {
         if (!_enable_tags) {
-            FLARE_LOG(INFO) << "Not saving tags as they are not enabled.";
-            return flare::result_status::success();
+            MELON_LOG(INFO) << "Not saving tags as they are not enabled.";
+            return melon::result_status::success();
         }
         TagT *tag_data = new TagT[_nd + _num_frozen_pts];
         for (uint32_t i = 0; i < _nd; i++) {
@@ -366,7 +366,7 @@ namespace lambda {
     // 4 byte unsigned)
     template<typename T, typename TagT>
     uint64_t Index<T, TagT>::save_graph(std::string graph_file) {
-        flare::sequential_write_file out;
+        melon::sequential_write_file out;
         out.open(graph_file, false);
         uint64_t file_offset = 0;  // we will use this if we want
         out.reset(file_offset);
@@ -394,9 +394,9 @@ namespace lambda {
     }
 
     template<typename T, typename TagT>
-    flare::result_status Index<T, TagT>::save_delete_list(const std::string &filename, size_t *saved_size) {
+    melon::result_status Index<T, TagT>::save_delete_list(const std::string &filename, size_t *saved_size) {
         if (_delete_set.size() == 0) {
-            return flare::result_status::success();
+            return melon::result_status::success();
         }
         std::unique_ptr<uint32_t[]> delete_list =
                 std::make_unique<uint32_t[]>(_delete_set.size());
@@ -408,15 +408,15 @@ namespace lambda {
     }
 
     template<typename T, typename TagT>
-    flare::result_status Index<T, TagT>::save(const char *filename, bool compact_before_save) {
-        flare::stop_watcher timer;
+    melon::result_status Index<T, TagT>::save(const char *filename, bool compact_before_save) {
+        melon::stop_watcher timer;
 
         if (compact_before_save) {
             compact_data();
             compact_frozen_point();
         } else {
             if (not _data_compacted) {
-                return flare::result_status(-1,
+                return melon::result_status(-1,
                                             "Index save for non-compacted index is not yet implemented");
             }
         }
@@ -436,39 +436,39 @@ namespace lambda {
 
             // Because the save_* functions use append mode, ensure that
             // the files are deleted before save. Ideally, we should check
-            // the error code for flare::remove, but will ignore now because
+            // the error code for melon::remove, but will ignore now because
             // delete should succeed if save will succeed.
-            flare::remove(graph_file, ec);
+            melon::remove(graph_file, ec);
             save_graph(graph_file);
-            flare::remove(data_file, ec);
+            melon::remove(data_file, ec);
             save_data(data_file);
-            flare::remove(tags_file, ec);
+            melon::remove(tags_file, ec);
             save_tags(tags_file, &tmp_size);
-            flare::remove(delete_list_file, ec);
+            melon::remove(delete_list_file, ec);
             save_delete_list(delete_list_file, &tmp_size);
         } else {
-            FLARE_LOG(INFO) << "Save index in a single file currently not supported. "
+            MELON_LOG(INFO) << "Save index in a single file currently not supported. "
                                "Not saving the index.";
         }
 
         reposition_frozen_point_to_end();
 
-        FLARE_LOG(INFO) << "Time taken for save: " << timer.elapsed() / 1000000.0
+        MELON_LOG(INFO) << "Time taken for save: " << timer.elapsed() / 1000000.0
                         << "s.";
-        return flare::result_status::success();
+        return melon::result_status::success();
     }
 
 
     template<typename T, typename TagT>
-    flare::result_status Index<T, TagT>::load_tags(const std::string tag_filename, size_t &ret) {
+    melon::result_status Index<T, TagT>::load_tags(const std::string tag_filename, size_t &ret) {
         if (_enable_tags && !file_exists(tag_filename)) {
-            FLARE_LOG(ERROR) << "Tag file provided does not exist!";
-            return flare::result_status(-1, "Tag file provided does not exist!");
+            MELON_LOG(ERROR) << "Tag file provided does not exist!";
+            return melon::result_status(-1, "Tag file provided does not exist!");
         }
         if (!_enable_tags) {
-            FLARE_LOG(INFO) << "Tags not loaded as tags not enabled.";
+            MELON_LOG(INFO) << "Tags not loaded as tags not enabled.";
             ret =  0;
-            return flare::result_status::success();
+            return melon::result_status::success();
         }
 
         size_t file_dim, file_num_points;
@@ -482,9 +482,9 @@ namespace lambda {
             std::stringstream stream;
             stream << "ERROR: Found " << file_dim << " dimensions for tags,"
                    << "but tag file must have 1 dimension.\n";
-            FLARE_LOG(ERROR) << stream.str();
+            MELON_LOG(ERROR) << stream.str();
             delete[] tag_data;
-            return flare::result_status(-1, stream.str());
+            return melon::result_status(-1, stream.str());
         }
 
         size_t num_data_points =
@@ -498,10 +498,10 @@ namespace lambda {
                 _tag_to_location[tag] = i;
             }
         }
-        FLARE_LOG(INFO) << "Tags loaded.";
+        MELON_LOG(INFO) << "Tags loaded.";
         delete[] tag_data;
         ret =  file_num_points;
-        return flare::result_status::success();
+        return melon::result_status::success();
     }
 
     template<typename T, typename TagT>
@@ -510,9 +510,9 @@ namespace lambda {
         if (!file_exists(filename)) {
             std::stringstream stream;
             stream << "ERROR: data file " << filename << " does not exist.\n";
-            FLARE_LOG(ERROR) << stream.str();
+            MELON_LOG(ERROR) << stream.str();
             aligned_free(_data);
-            FLARE_CHECK(false) << stream.str();
+            MELON_CHECK(false) << stream.str();
         }
         lambda::get_bin_metadata(filename, file_num_points, file_dim);
 
@@ -523,9 +523,9 @@ namespace lambda {
             std::stringstream stream;
             stream << "ERROR: Driver requests loading " << _dim << " dimension,"
                    << "but file has " << file_dim << " dimension.\n";
-            FLARE_LOG(ERROR) << stream.str();
+            MELON_LOG(ERROR) << stream.str();
             aligned_free(_data);
-            FLARE_CHECK(false) << stream.str();
+            MELON_CHECK(false) << stream.str();
         }
 
         if (file_num_points > _max_points) {
@@ -539,7 +539,7 @@ namespace lambda {
 
 
     template<typename T, typename TagT>
-    flare::result_status Index<T, TagT>::load_delete_set(const std::string &filename, size_t &ret) {
+    melon::result_status Index<T, TagT>::load_delete_set(const std::string &filename, size_t &ret) {
         std::unique_ptr<uint32_t[]> delete_list;
         size_t npts, ndim;
         auto rs = lambda::binary_file::load_bin<uint32_t>(filename, delete_list, npts, ndim);
@@ -551,13 +551,13 @@ namespace lambda {
             _delete_set.insert(delete_list[i]);
         }
         ret =  npts;
-        return flare::result_status::success();
+        return melon::result_status::success();
     }
 
     // load the index from file and update the max_degree, cur (navigating
     // node loc), and _final_graph (adjacency list)
     template<typename T, typename TagT>
-    flare::result_status Index<T, TagT>::load(const char *filename, uint32_t num_threads,
+    melon::result_status Index<T, TagT>::load(const char *filename, uint32_t num_threads,
                                               uint32_t search_l) {
         std::unique_lock<std::shared_timed_mutex> ul(_update_lock);
         std::unique_lock<std::shared_timed_mutex> tl(_tag_lock);
@@ -588,9 +588,9 @@ namespace lambda {
             graph_num_pts = load_graph(graph_file, data_file_num_pts);
 
         } else {
-            FLARE_LOG(INFO) << "Single index file saving/loading support not yet "
+            MELON_LOG(INFO) << "Single index file saving/loading support not yet "
                                "enabled. Not loading the index.";
-            return flare::result_status::success();
+            return melon::result_status::success();
         }
 
         if (data_file_num_pts != graph_num_pts ||
@@ -601,9 +601,9 @@ namespace lambda {
                    << " from graph, and " << tags_file_num_pts
                    << " tags, with num_frozen_pts being set to " << _num_frozen_pts
                    << " in constructor.\n";
-            FLARE_LOG(ERROR) << stream.str();
+            MELON_LOG(ERROR) << stream.str();
             aligned_free(_data);
-            return flare::result_status(-1, stream.str());
+            return melon::result_status(-1, stream.str());
         }
 
         _nd = data_file_num_pts - _num_frozen_pts;
@@ -616,7 +616,7 @@ namespace lambda {
         _lazy_done = _delete_set.size() != 0;
 
         reposition_frozen_point_to_end();
-        FLARE_LOG(INFO) << "Num frozen points:" << _num_frozen_pts << " _nd: " << _nd
+        MELON_LOG(INFO) << "Num frozen points:" << _num_frozen_pts << " _nd: " << _nd
                         << " _start: " << _start
                         << " size(_location_to_tag): " << _location_to_tag.size()
                         << " size(_tag_to_location):" << _tag_to_location.size()
@@ -631,7 +631,7 @@ namespace lambda {
             _status = initialize_query_scratch(num_threads, search_l, search_l,
                                      (uint32_t) _max_range_of_loaded_graph, _dim);
         }
-        return flare::result_status::success();
+        return melon::result_status::success();
     }
 
 
@@ -653,7 +653,7 @@ namespace lambda {
         uint64_t vamana_metadata_size =
                 sizeof(uint64_t) + sizeof(uint32_t) + sizeof(uint32_t) + sizeof(uint64_t);
 
-        FLARE_LOG(INFO) << "From graph header, expected_file_size: "
+        MELON_LOG(INFO) << "From graph header, expected_file_size: "
                         << expected_file_size
                         << ", _max_observed_degree: " << _max_observed_degree
                         << ", _start: " << _start
@@ -668,17 +668,17 @@ namespace lambda {
                 stream << "ERROR: When loading index, detected static index, but "
                           "constructor asks for dynamic index. Exitting.\n";
             }
-            FLARE_LOG(ERROR) << stream.str();
+            MELON_LOG(ERROR) << stream.str();
             aligned_free(_data);
-            FLARE_CHECK(false) << stream.str();
+            MELON_CHECK(false) << stream.str();
         }
 
-        FLARE_LOG(INFO) << "Loading vamana graph " << filename << "...";
+        MELON_LOG(INFO) << "Loading vamana graph " << filename << "...";
 
         // If user provides more points than max_points
         // resize the _final_graph to the larger size.
         if (_max_points < expected_num_points) {
-            FLARE_LOG(INFO) << "Number of points in data: " << expected_num_points
+            MELON_LOG(INFO) << "Number of points in data: " << expected_num_points
                             << " is greater than max_points: " << _max_points
                             << " Setting max points to: " << expected_num_points;
             _final_graph.resize(expected_num_points + _num_frozen_pts);
@@ -692,7 +692,7 @@ namespace lambda {
             unsigned k;
             in.read((char *) &k, sizeof(unsigned));
             if (k == 0) {
-                FLARE_LOG(ERROR) << "ERROR: Point found with no out-neighbors, point#"
+                MELON_LOG(ERROR) << "ERROR: Point found with no out-neighbors, point#"
                                  << nodes_read;
             }
 
@@ -704,13 +704,13 @@ namespace lambda {
             _final_graph[nodes_read - 1].swap(tmp);
             bytes_read += sizeof(uint32_t) * ((uint64_t) k + 1);
             if (nodes_read % 10000000 == 0)
-                FLARE_LOG(INFO) << "." << std::flush;
+                MELON_LOG(INFO) << "." << std::flush;
             if (k > _max_range_of_loaded_graph) {
                 _max_range_of_loaded_graph = k;
             }
         }
 
-        FLARE_LOG(INFO) << "done. Index has " << nodes_read << " nodes and " << cc
+        MELON_LOG(INFO) << "done. Index has " << nodes_read << " nodes and " << cc
                         << " out-edges, _start is set to " << _start;
         return nodes_read;
     }
@@ -719,7 +719,7 @@ namespace lambda {
     int Index<T, TagT>::get_vector_by_tag(TagT &tag, T *vec) {
         std::shared_lock<std::shared_timed_mutex> lock(_tag_lock);
         if (_tag_to_location.find(tag) == _tag_to_location.end()) {
-            FLARE_LOG(INFO) << "Tag " << tag << " does not exist";
+            MELON_LOG(INFO) << "Tag " << tag << " does not exist";
             return -1;
         }
 
@@ -785,10 +785,10 @@ namespace lambda {
             const T *node_coords, const unsigned Lsize,
             const std::vector<unsigned> &init_ids,
             std::vector<neighbor> &expanded_nodes_info,
-            flare::robin_set<unsigned> &expanded_nodes_ids,
+            melon::robin_set<unsigned> &expanded_nodes_ids,
             std::vector<neighbor> &best_L_nodes, std::vector<unsigned> &des,
-            flare::robin_set<unsigned> &inserted_into_pool_rs,
-            flare::dynamic_bitset<> &inserted_into_pool_bs, bool ret_frozen,
+            melon::robin_set<unsigned> &inserted_into_pool_rs,
+            melon::dynamic_bitset<> &inserted_into_pool_bs, bool ret_frozen,
             bool search_invocation) {
         for (unsigned i = 0; i < Lsize + 1; i++) {
             best_L_nodes[i].distance = std::numeric_limits<float>::max();
@@ -818,8 +818,8 @@ namespace lambda {
 
         for (auto id : init_ids) {
             if (id >= _max_points + _num_frozen_pts) {
-                FLARE_LOG(ERROR) << "Out of range loc found as an edge : " << id;
-                FLARE_CHECK(false) <<
+                MELON_LOG(ERROR) << "Out of range loc found as an edge : " << id;
+                MELON_CHECK(false) <<
                                    std::string("Wrong loc") + std::to_string(id);
             }
             nn = neighbor(id,
@@ -868,7 +868,7 @@ namespace lambda {
                             std::stringstream msg;
                             msg << "Out of range edge " << _final_graph[n][m]
                                 << " found at vertex " << n;
-                            FLARE_CHECK(false) << msg.str();
+                            MELON_CHECK(false) << msg.str();
                         }
                         des.emplace_back(_final_graph[n][m]);
                     }
@@ -878,7 +878,7 @@ namespace lambda {
                             std::stringstream msg;
                             msg << "Out of range edge " << _final_graph[n][m]
                                 << " found at vertex " << n;
-                            FLARE_CHECK(false) << msg.str();
+                            MELON_CHECK(false) << msg.str();
                         }
                         des.emplace_back(_final_graph[n][m]);
                     }
@@ -934,10 +934,10 @@ namespace lambda {
             const size_t node_id, const unsigned Lindex,
             std::vector<unsigned> init_ids,
             std::vector<neighbor> &expanded_nodes_info,
-            flare::robin_set<unsigned> &expanded_nodes_ids, std::vector<unsigned> &des,
+            melon::robin_set<unsigned> &expanded_nodes_ids, std::vector<unsigned> &des,
             std::vector<neighbor> &best_L_nodes,
-            flare::robin_set<unsigned> &inserted_into_pool_rs,
-            flare::dynamic_bitset<> &inserted_into_pool_bs) {
+            melon::robin_set<unsigned> &inserted_into_pool_rs,
+            melon::dynamic_bitset<> &inserted_into_pool_bs) {
         const T *node_coords = _data + _aligned_dim * node_id;
 
         if (init_ids.size() == 0)
@@ -953,7 +953,7 @@ namespace lambda {
             const size_t node_id, const unsigned Lindex,
             std::vector<unsigned> init_ids,
             std::vector<neighbor> &expanded_nodes_info,
-            flare::robin_set<unsigned> &expanded_nodes_ids) {
+            melon::robin_set<unsigned> &expanded_nodes_ids) {
         const T *node_coords = _data + _aligned_dim * node_id;
 
         if (init_ids.size() == 0)
@@ -962,8 +962,8 @@ namespace lambda {
         std::vector<unsigned> des;
         std::vector<neighbor> best_L_nodes;
         best_L_nodes.resize(Lindex + 1);
-        flare::robin_set<unsigned> inserted_into_pool_rs;
-        flare::dynamic_bitset<> inserted_into_pool_bs;
+        melon::robin_set<unsigned> inserted_into_pool_rs;
+        melon::dynamic_bitset<> inserted_into_pool_bs;
 
         iterate_to_fixed_point(node_coords, Lindex, init_ids, expanded_nodes_info,
                                expanded_nodes_ids, best_L_nodes, des,
@@ -973,10 +973,10 @@ namespace lambda {
     template<typename T, typename TagT>
     void Index<T, TagT>::search_for_point_and_add_links(
             int location, uint32_t Lindex, std::vector<neighbor> &pool,
-            flare::robin_set<unsigned> &visited, std::vector<unsigned> &des,
+            melon::robin_set<unsigned> &visited, std::vector<unsigned> &des,
             std::vector<neighbor> &best_l_nodes,
-            flare::robin_set<unsigned> &inserted_into_pool_rs,
-            flare::dynamic_bitset<> &inserted_into_pool_bs) {
+            melon::robin_set<unsigned> &inserted_into_pool_rs,
+            melon::dynamic_bitset<> &inserted_into_pool_bs) {
         std::vector<unsigned> init_ids;
         get_expanded_nodes(location, Lindex, init_ids, pool, visited, des,
                            best_l_nodes, inserted_into_pool_rs,
@@ -1117,8 +1117,8 @@ namespace lambda {
             std::stringstream ss;
             ss << "Thread loc:" << std::this_thread::get_id()
                << " Pool address: " << &pool;
-            FLARE_LOG(INFO) << ss.str();
-            FLARE_CHECK(false) << "Pool passed to prune_neighbors is empty";
+            MELON_LOG(INFO) << ss.str();
+            MELON_CHECK(false) << "Pool passed to prune_neighbors is empty";
         }
 
         _max_observed_degree = (std::max)(_max_observed_degree, range);
@@ -1160,7 +1160,7 @@ namespace lambda {
             // des.loc is the loc of the neighbors of n
             assert(des >= 0 && des < _max_points + _num_frozen_pts);
             if (des > _max_points)
-                FLARE_LOG(INFO) << "error. " << des << " exceeds max_pts";
+                MELON_LOG(INFO) << "error. " << des << " exceeds max_pts";
             // des_pool contains the neighbors of the neighbors of n
 
             {
@@ -1217,7 +1217,7 @@ namespace lambda {
 
             if (prune_needed) {
                 copy_of_neighbors.push_back(n);
-                flare::robin_set<unsigned> dummy_visited(0);
+                melon::robin_set<unsigned> dummy_visited(0);
                 std::vector<neighbor> dummy_pool(0);
 
                 size_t reserveSize =
@@ -1294,7 +1294,7 @@ namespace lambda {
         /* visit_order is a vector that is initialized to the entire graph */
         std::vector<unsigned> visit_order;
         std::vector<lambda::neighbor> pool, tmp;
-        flare::robin_set<unsigned> visited;
+        melon::robin_set<unsigned> visited;
         visit_order.reserve(_nd + _num_frozen_pts);
         for (unsigned i = 0; i < (unsigned) _nd; i++) {
             visit_order.emplace_back(i);
@@ -1322,40 +1322,40 @@ namespace lambda {
         std::vector<unsigned> init_ids;
         init_ids.emplace_back(_start);
 
-        flare::stop_watcher link_timer;
+        melon::stop_watcher link_timer;
 
 #pragma omp parallel for schedule(dynamic, 2048)
         for (int64_t node_ctr = 0; node_ctr < (int64_t) (visit_order.size()); node_ctr++) {
             auto node = visit_order[node_ctr];
             std::vector<neighbor> pool;
-            flare::robin_set<unsigned> visited;
+            melon::robin_set<unsigned> visited;
             pool.reserve(_indexingQueueSize * 2);
             visited.reserve(_indexingQueueSize * 2);
             std::vector<unsigned> des;
             des.reserve(_indexingRange * GRAPH_SLACK_FACTOR);
             std::vector<neighbor> best_L_nodes;
             best_L_nodes.resize(_indexingQueueSize + 1);
-            flare::robin_set<unsigned> inserted_into_pool_rs;
-            flare::dynamic_bitset<> inserted_into_pool_bs;
+            melon::robin_set<unsigned> inserted_into_pool_rs;
+            melon::dynamic_bitset<> inserted_into_pool_bs;
 
             search_for_point_and_add_links(node, _indexingQueueSize, pool, visited,
                                            des, best_L_nodes, inserted_into_pool_rs,
                                            inserted_into_pool_bs);
 
             if (node_ctr % 100000 == 0) {
-                FLARE_LOG(INFO) << "\r" << (100.0 * node_ctr) / (visit_order.size())
+                MELON_LOG(INFO) << "\r" << (100.0 * node_ctr) / (visit_order.size())
                                 << "\% of index build completed." << std::flush;
             }
         }
 
         if (_nd > 0) {
-            FLARE_LOG(INFO) << "Starting final cleanup.." << std::flush;
+            MELON_LOG(INFO) << "Starting final cleanup.." << std::flush;
         }
 #pragma omp parallel for schedule(dynamic, 2048)
         for (int64_t node_ctr = 0; node_ctr < (int64_t) (visit_order.size()); node_ctr++) {
             auto node = visit_order[node_ctr];
             if (_final_graph[node].size() > _indexingRange) {
-                flare::robin_set<unsigned> dummy_visited(0);
+                melon::robin_set<unsigned> dummy_visited(0);
                 std::vector<neighbor> dummy_pool(0);
                 std::vector<unsigned> new_out_neighbors;
 
@@ -1378,7 +1378,7 @@ namespace lambda {
             }
         }
         if (_nd > 0) {
-            FLARE_LOG(INFO) << "done. Link time: " << (double) link_timer.s_elapsed()<<"s";
+            MELON_LOG(INFO) << "done. Link time: " << (double) link_timer.s_elapsed()<<"s";
         }
     }
 
@@ -1386,12 +1386,12 @@ namespace lambda {
     void Index<T, TagT>::prune_all_nbrs(const Parameters &parameters) {
         const unsigned range = parameters.Get<unsigned>("R");
 
-        flare::stop_watcher timer;
+        melon::stop_watcher timer;
 #pragma omp parallel for
         for (int64_t node = 0; node < (int64_t) (_max_points + _num_frozen_pts); node++) {
             if ((size_t) node < _nd || (size_t) node == _max_points) {
                 if (_final_graph[node].size() > range) {
-                    flare::robin_set<unsigned> dummy_visited(0);
+                    melon::robin_set<unsigned> dummy_visited(0);
                     std::vector<neighbor> dummy_pool(0);
                     std::vector<unsigned> new_out_neighbors;
 
@@ -1415,7 +1415,7 @@ namespace lambda {
             }
         }
 
-        FLARE_LOG(INFO) << "Prune time : " << timer.elapsed() / 1000 << "ms";
+        MELON_LOG(INFO) << "Prune time : " << timer.elapsed() / 1000 << "ms";
         size_t max = 0, min = 1 << 30, total = 0, cnt = 0;
         for (size_t i = 0; i < (_nd + _num_frozen_pts); i++) {
             auto &pool = _final_graph[i];
@@ -1428,23 +1428,23 @@ namespace lambda {
         if (min > max)
             min = max;
         if (_nd > 0) {
-            FLARE_LOG(INFO) << "Index built with degree: max:" << max << "  avg:"
+            MELON_LOG(INFO) << "Index built with degree: max:" << max << "  avg:"
                             << (float) total / (float) (_nd + _num_frozen_pts)
                             << "  min:" << min << "  count(deg<2):" << cnt;
         }
     }
 
     template<typename T, typename TagT>
-    flare::result_status Index<T, TagT>::set_start_point(T *data) {
+    melon::result_status Index<T, TagT>::set_start_point(T *data) {
         std::unique_lock<std::shared_timed_mutex> ul(_update_lock);
         std::unique_lock<std::shared_timed_mutex> tl(_tag_lock);
         if (_nd > 0)
-            return flare::result_status(-1, "Can not set starting point for a non-empty index");
+            return melon::result_status(-1, "Can not set starting point for a non-empty index");
 
         memcpy(_data + _aligned_dim * _max_points, data, _aligned_dim * sizeof(T));
         _has_built = true;
-        FLARE_LOG(INFO) << "Index start point set";
-        return flare::result_status::success();
+        MELON_LOG(INFO) << "Index start point set";
+        return melon::result_status::success();
     }
 
     template<typename T, typename TagT>
@@ -1469,20 +1469,20 @@ namespace lambda {
     }
 
     template<typename T, typename TagT>
-    flare::result_status Index<T, TagT>::build_with_data_populated(
+    melon::result_status Index<T, TagT>::build_with_data_populated(
             Parameters &parameters, const std::vector<TagT> &tags) {
-        FLARE_LOG(INFO) << "Starting index build with " << _nd << " points... ";
+        MELON_LOG(INFO) << "Starting index build with " << _nd << " points... ";
 
         if (_nd < 1)
-            return flare::result_status(-1, "Error: Trying to build an index with 0 points");
+            return melon::result_status(-1, "Error: Trying to build an index with 0 points");
 
         if (_enable_tags && tags.size() != _nd) {
             std::stringstream stream;
             stream << "ERROR: Driver requests loading " << _nd << " points from file,"
                    << "but tags vector is of size " << tags.size() << ".";
-            FLARE_LOG(ERROR) << stream.str();
+            MELON_LOG(ERROR) << stream.str();
             aligned_free(_data);
-            return flare::result_status(-1, stream.str());
+            return melon::result_status(-1, stream.str());
         }
         if (_enable_tags) {
             for (size_t i = 0; i < tags.size(); ++i) {
@@ -1507,21 +1507,21 @@ namespace lambda {
             if (pool.size() < 2)
                 cnt++;
         }
-        FLARE_LOG(INFO) << "Index built with degree: max:" << max
+        MELON_LOG(INFO) << "Index built with degree: max:" << max
                         << "  avg:" << (float) total / (float) (_nd + _num_frozen_pts)
                         << "  min:" << min << "  count(deg<2):" << cnt;
 
         _max_observed_degree = (std::max)((unsigned) max, _max_observed_degree);
         _has_built = true;
-        return flare::result_status::success();
+        return melon::result_status::success();
     }
 
     template<typename T, typename TagT>
-    flare::result_status Index<T, TagT>::build(const T *data, const size_t num_points_to_load,
+    melon::result_status Index<T, TagT>::build(const T *data, const size_t num_points_to_load,
                                                Parameters &parameters,
                                                const std::vector<TagT> &tags) {
         if (num_points_to_load == 0)
-            return flare::result_status(-1, "Do not call build with 0 points");
+            return melon::result_status(-1, "Do not call build with 0 points");
 
         _nd = num_points_to_load;
 
@@ -1537,25 +1537,25 @@ namespace lambda {
     }
 
     template<typename T, typename TagT>
-    flare::result_status Index<T, TagT>::build(const char *filename,
+    melon::result_status Index<T, TagT>::build(const char *filename,
                                                const size_t num_points_to_load,
                                                Parameters &parameters,
                                                const std::vector<TagT> &tags) {
         if (num_points_to_load == 0)
-            return flare::result_status(-1, "Do not call build with 0 points");
+            return melon::result_status(-1, "Do not call build with 0 points");
 
         if (!file_exists(filename)) {
-            FLARE_LOG(ERROR) << "Data file " << filename
+            MELON_LOG(ERROR) << "Data file " << filename
                              << " does not exist!!! Exiting....";
             std::stringstream stream;
             stream << "Data file " << filename << " does not exist.";
-            FLARE_LOG(ERROR) << stream.str();
-            return flare::result_status(-1, stream.str());
+            MELON_LOG(ERROR) << stream.str();
+            return melon::result_status(-1, stream.str());
         }
 
         size_t file_num_points, file_dim;
         if (filename == nullptr) {
-            return flare::result_status(-1, "Can not build with an empty file");
+            return melon::result_status(-1, "Can not build with an empty file");
         }
 
         lambda::get_bin_metadata(filename, file_num_points, file_dim);
@@ -1566,7 +1566,7 @@ namespace lambda {
                    << "index can support only " << _max_points
                    << " points as specified in constructor.";
             aligned_free(_data);
-            return flare::result_status(-1, stream.str());
+            return melon::result_status(-1, stream.str());
         }
 
         if (num_points_to_load > file_num_points) {
@@ -1574,16 +1574,16 @@ namespace lambda {
             stream << "ERROR: Driver requests loading " << num_points_to_load
                    << " points and file has only " << file_num_points << " points.";
             aligned_free(_data);
-            return flare::result_status(-1, stream.str());
+            return melon::result_status(-1, stream.str());
         }
 
         if (file_dim != _dim) {
             std::stringstream stream;
             stream << "ERROR: Driver requests loading " << _dim << " dimension,"
                    << "but file has " << file_dim << " dimension.";
-            FLARE_LOG(ERROR) << stream.str();
+            MELON_LOG(ERROR) << stream.str();
             aligned_free(_data);
-            return flare::result_status(-1, stream.str());
+            return melon::result_status(-1, stream.str());
         }
 
         copy_aligned_data_from_file<T>(filename, _data, file_num_points, file_dim,
@@ -1594,24 +1594,24 @@ namespace lambda {
             }
         }
 
-        FLARE_LOG(INFO) << "Using only first " << num_points_to_load
+        MELON_LOG(INFO) << "Using only first " << num_points_to_load
                         << " from file.. ";
         _nd = num_points_to_load;
         return build_with_data_populated(parameters, tags);
     }
 
     template<typename T, typename TagT>
-    flare::result_status Index<T, TagT>::build(const char *filename,
+    melon::result_status Index<T, TagT>::build(const char *filename,
                                                const size_t num_points_to_load,
                                                Parameters &parameters, const char *tag_filename) {
         std::vector<TagT> tags;
-        flare::result_status rs;
+        melon::result_status rs;
         if (_enable_tags) {
             if (tag_filename == nullptr) {
-                return flare::result_status(-1, "Tag filename is null, while _enable_tags is set");
+                return melon::result_status(-1, "Tag filename is null, while _enable_tags is set");
             } else {
                 if (file_exists(tag_filename)) {
-                    FLARE_LOG(INFO) << "Loading tags from " << tag_filename
+                    MELON_LOG(INFO) << "Loading tags from " << tag_filename
                                     << " for vamana index build";
                     TagT *tag_data = nullptr;
                     size_t npts, ndim;
@@ -1624,14 +1624,14 @@ namespace lambda {
                         sstream << "Loaded " << npts
                                 << " tags, insufficient to populate tags for "
                                 << num_points_to_load << "  points to load";
-                        return flare::result_status(-1, sstream.str());
+                        return melon::result_status(-1, sstream.str());
                     }
                     for (size_t i = 0; i < num_points_to_load; i++) {
                         tags.push_back(tag_data[i]);
                     }
                     delete[] tag_data;
                 } else {
-                    return flare::result_status(-1, std::string("Tag file") + tag_filename + " does not exist");
+                    return melon::result_status(-1, std::string("Tag file") + tag_filename + " does not exist");
                 }
             }
         }
@@ -1657,12 +1657,12 @@ namespace lambda {
             const T *query, const size_t K, const unsigned L, IdType *indices,
             float *distances, in_mem_query_scratch<T> &scratch) {
         std::vector<neighbor> &expanded_nodes_info = scratch.pool();
-        flare::robin_set<unsigned> &expanded_nodes_ids = scratch.visited();
+        melon::robin_set<unsigned> &expanded_nodes_ids = scratch.visited();
         std::vector<unsigned> &des = scratch.des();
         std::vector<neighbor> best_L_nodes = scratch.best_l_nodes();
-        flare::robin_set<unsigned> &inserted_into_pool_rs =
+        melon::robin_set<unsigned> &inserted_into_pool_rs =
                 scratch.inserted_into_pool_rs();
-        flare::dynamic_bitset<> &inserted_into_pool_bs =
+        melon::dynamic_bitset<> &inserted_into_pool_bs =
                 scratch.inserted_into_pool_bs();
 
         std::vector<unsigned> init_ids;
@@ -1713,7 +1713,7 @@ namespace lambda {
 
         if (L > scratch.search_l) {
             scratch.resize_for_query(L);
-            FLARE_LOG(INFO) << "Expanding query scratch_space. Was created with Lsize: "
+            MELON_LOG(INFO) << "Expanding query scratch_space. Was created with Lsize: "
                             << scratch.search_l << " but search L is: " << L;
         }
         uint32_t *indices = scratch.indices;
@@ -1783,7 +1783,7 @@ namespace lambda {
         assert(_enable_tags);
 
         if (!_enable_tags) {
-            FLARE_LOG(ERROR) << "Tags must be instantiated for deletions";
+            MELON_LOG(ERROR) << "Tags must be instantiated for deletions";
             return -2;
         }
 
@@ -1809,7 +1809,7 @@ namespace lambda {
     int Index<T, TagT>::eager_delete(const TagT tag, const Parameters &parameters,
                                      int delete_mode) {
         if (_lazy_done && (!_data_compacted)) {
-            FLARE_LOG(INFO) << "Lazy delete requests issued but data not consolidated, "
+            MELON_LOG(INFO) << "Lazy delete requests issued but data not consolidated, "
                                "cannot proceed with eager deletes.";
             return -1;
         }
@@ -1819,7 +1819,7 @@ namespace lambda {
         {
             std::shared_lock<std::shared_timed_mutex> tl(_tag_lock);
             if (_tag_to_location.find(tag) == _tag_to_location.end()) {
-                FLARE_LOG(ERROR) << "Delete tag " << tag << " not found";
+                MELON_LOG(ERROR) << "Delete tag " << tag << " not found";
                 return -1;
             }
             loc = _tag_to_location[tag];
@@ -1856,7 +1856,7 @@ namespace lambda {
             }
         }
 
-        flare::robin_set<unsigned> in_nbr;
+        melon::robin_set<unsigned> in_nbr;
         {
             LockGuard guard(_locks_in[loc]);
             for (unsigned i = 0; i < _in_graph[loc].size(); i++)
@@ -1865,7 +1865,7 @@ namespace lambda {
         assert(_in_graph[loc].size() == in_nbr.size());
 
         std::vector<neighbor> pool, tmp;
-        flare::robin_set<unsigned> visited;
+        melon::robin_set<unsigned> visited;
         std::vector<unsigned> intersection;
         unsigned Lindex = parameters.Get<unsigned>("L");
         std::vector<unsigned> init_ids;
@@ -1889,7 +1889,7 @@ namespace lambda {
                     _final_graph[it].end());
         }
 
-        flare::robin_set<unsigned> candidate_set;
+        melon::robin_set<unsigned> candidate_set;
         std::vector<neighbor> expanded_nghrs;
         std::vector<neighbor> result;
 
@@ -1997,9 +1997,9 @@ namespace lambda {
 
     template<typename T, typename TagT>
     inline void Index<T, TagT>::process_delete(
-            const flare::robin_set<unsigned> &old_delete_set, size_t i,
+            const melon::robin_set<unsigned> &old_delete_set, size_t i,
             const unsigned &range, const unsigned &maxc, const float &alpha) {
-        flare::robin_set<unsigned> candidate_set;
+        melon::robin_set<unsigned> candidate_set;
         std::vector<neighbor> expanded_nghrs;
         std::vector<neighbor> result;
 
@@ -2050,8 +2050,8 @@ namespace lambda {
     template<typename T, typename TagT>
     consolidation_report Index<T, TagT>::consolidate_deletes(
             const Parameters &params) {
-        FLARE_CHECK(_enable_tags) << "Point tag array not instantiated";
-        FLARE_CHECK(!_eager_done) << "Can not consolidates eager deletes.";
+        MELON_CHECK(_enable_tags) << "Point tag array not instantiated";
+        MELON_CHECK(!_eager_done) << "Can not consolidates eager deletes.";
 
         {
             std::shared_lock<std::shared_timed_mutex> ul(_update_lock);
@@ -2059,12 +2059,12 @@ namespace lambda {
             std::shared_lock<std::shared_timed_mutex> dl(_delete_lock);
             if (_empty_slots.size() + _nd != _max_points) {
                 std::string err = "#empty slots + nd != max points";
-                FLARE_LOG(ERROR) << err;
-                FLARE_CHECK(false) << err;
+                MELON_LOG(ERROR) << err;
+                MELON_CHECK(false) << err;
             }
 
             if (_location_to_tag.size() + _delete_set.size() != _nd) {
-                FLARE_LOG(ERROR) << "Error: _location_to_tag.size ("
+                MELON_LOG(ERROR) << "Error: _location_to_tag.size ("
                                  << _location_to_tag.size() << ")  + _delete_set.size ("
                                  << _delete_set.size() << ") != _nd(" << _nd << ") ";
                 return consolidation_report(lambda::consolidation_report::status_code::
@@ -2073,7 +2073,7 @@ namespace lambda {
             }
 
             if (_location_to_tag.size() != _tag_to_location.size()) {
-                FLARE_CHECK(false) <<
+                MELON_CHECK(false) <<
                                    "_location_to_tag and _tag_to_location not of same size";
             }
         }
@@ -2086,16 +2086,16 @@ namespace lambda {
         std::unique_lock<std::shared_timed_mutex> cl(_consolidate_lock,
                                                      std::defer_lock);
         if (not cl.try_lock()) {
-            FLARE_LOG(ERROR)
+            MELON_LOG(ERROR)
                     << "Consildate delete function failed to acquire consolidate lock";
             return consolidation_report(
                     lambda::consolidation_report::status_code::LOCK_FAIL, 0, 0, 0, 0, 0,
                     0);
         }
 
-        FLARE_LOG(INFO) << "Starting consolidate_deletes... ";
+        MELON_LOG(INFO) << "Starting consolidate_deletes... ";
 
-        flare::robin_set<unsigned> old_delete_set;
+        melon::robin_set<unsigned> old_delete_set;
         {
             std::unique_lock<std::shared_timed_mutex> dl(_delete_lock);
             _delete_set.swap(old_delete_set);
@@ -2108,7 +2108,7 @@ namespace lambda {
                                      ? omp_get_num_threads()
                                      : params.Get<unsigned>("num_threads");
 
-        flare::stop_watcher timer;
+        melon::stop_watcher timer;
 #pragma omp parallel for num_threads(num_threads) schedule(dynamic, 8192)
         for (int64_t loc = 0; loc < (int64_t) _max_points; loc++) {
             if (old_delete_set.find((uint32_t) loc) == old_delete_set.end() &&
@@ -2140,7 +2140,7 @@ namespace lambda {
             _lazy_done = false;
 
         double duration = timer.s_elapsed();
-        FLARE_LOG(INFO) << " done in " << duration << " seconds.";
+        MELON_LOG(INFO) << " done in " << duration << " seconds.";
         return consolidation_report(
                 lambda::consolidation_report::status_code::SUCCESS, ret_nd,
                 this->_max_points, _empty_slots.size(), old_delete_set.size(),
@@ -2148,7 +2148,7 @@ namespace lambda {
     }
 
     template<typename T, typename TagT>
-    flare::result_status Index<T, TagT>::compact_frozen_point() {
+    melon::result_status Index<T, TagT>::compact_frozen_point() {
         if (_nd < _max_points) {
             if (_num_frozen_pts == 1) {
                 // set new _start to be frozen point
@@ -2171,34 +2171,34 @@ namespace lambda {
                            sizeof(T) * _aligned_dim);
                 }
             } else if (_num_frozen_pts > 1) {
-                return flare::result_status(-1, "Case not implemented.");
+                return melon::result_status(-1, "Case not implemented.");
             }
         }
-        return flare::result_status::success();
+        return melon::result_status::success();
     }
 
     // Should be called after acquiring _update_lock
     template<typename T, typename TagT>
-    flare::result_status Index<T, TagT>::compact_data() {
+    melon::result_status Index<T, TagT>::compact_data() {
         if (!_dynamic_index)
-            return flare::result_status(-1, "Can not compact a non-dynamic index");
+            return melon::result_status(-1, "Can not compact a non-dynamic index");
 
         if (_data_compacted) {
-            FLARE_LOG(ERROR)
+            MELON_LOG(ERROR)
                     << "Warning! Calling compact_data() when _data_compacted is true!";
-            return flare::result_status::success();
+            return melon::result_status::success();
         }
 
         std::unique_lock<std::shared_timed_mutex> cl(_consolidate_lock);
 
         if (_delete_set.size() > 0) {
-            return flare::result_status(-1,
+            return melon::result_status(-1,
                                         "Can not compact data when index has non-trivial _delete_set of "
                                         "size: " +
                                         std::to_string(_delete_set.size()));
         }
 
-        flare::stop_watcher timer;
+        melon::stop_watcher timer;
 
         std::vector<unsigned> new_location =
                 std::vector<unsigned>(_max_points + _num_frozen_pts, (uint32_t) UINT32_MAX);
@@ -2220,7 +2220,7 @@ namespace lambda {
 
         // If cur node is removed, replace it.
         if (_delete_set.find(_start) != _delete_set.end()) {
-            FLARE_LOG(ERROR) << "Replacing cur node which has been deleted... "
+            MELON_LOG(ERROR) << "Replacing cur node which has been deleted... "
                              << std::flush;
             auto old_ep = _start;
             // First active neighbor of old cur node is new cur node
@@ -2230,7 +2230,7 @@ namespace lambda {
                     break;
                 }
             if (_start == old_ep) {
-                return flare::result_status(-1,
+                return melon::result_status(-1,
                                             "ERROR: Did not find a replacement for cur node.");
             } else {
                 assert(_delete_set.find(_start) == _delete_set.end());
@@ -2245,7 +2245,7 @@ namespace lambda {
                     if (empty_locations.find(_final_graph[old][i]) !=
                         empty_locations.end()) {
                         ++num_dangling;
-                        FLARE_LOG(ERROR) << "Error in compact_data(). _final_graph[" << old
+                        MELON_LOG(ERROR) << "Error in compact_data(). _final_graph[" << old
                                          << "][" << i << "] = " << _final_graph[old][i]
                                          << " which is a location not associated with any tag.";
                         _final_graph[old].erase(_final_graph[old].begin() + i);
@@ -2275,7 +2275,7 @@ namespace lambda {
                 _final_graph[old].clear();
             }
         }
-        FLARE_LOG(ERROR) << "#dangling references after data compaction: "
+        MELON_LOG(ERROR) << "#dangling references after data compaction: "
                          << num_dangling;
         _tag_to_location.clear();
         for (auto pos = _location_to_tag.find_first(); pos.is_valid();
@@ -2299,15 +2299,15 @@ namespace lambda {
 
         _eager_done = false;
         _data_compacted = true;
-        FLARE_LOG(INFO) << "Time taken for compact_data: "
+        MELON_LOG(INFO) << "Time taken for compact_data: "
                         << timer.elapsed() / 1000000. << "s.";
-        return flare::result_status::success();
+        return melon::result_status::success();
     }
 
     template<typename T, typename TagT>
-    flare::result_status Index<T, TagT>::reserve_location(int &ret) {
+    melon::result_status Index<T, TagT>::reserve_location(int &ret) {
         if (_nd >= _max_points) {
-            return flare::result_status(-1, "overflow");
+            return melon::result_status(-1, "overflow");
         }
         unsigned location;
         if (_data_compacted && _empty_slots.is_empty()) {
@@ -2324,20 +2324,20 @@ namespace lambda {
 
             auto r = _empty_slots.pop_any(location);
             if(!r) {
-                return flare::result_status(-1, "no slots");
+                return melon::result_status(-1, "no slots");
             }
             _delete_set.erase(location);
         }
 
         ++_nd;
         ret = location;
-        return flare::result_status::success();
+        return melon::result_status::success();
     }
 
     template<typename T, typename TagT>
     size_t Index<T, TagT>::release_location(int location) {
         if (_empty_slots.is_in_set(location))
-            FLARE_CHECK(false) <<
+            MELON_CHECK(false) <<
                                "Trying to release location, but location already in empty slots";
         _empty_slots.insert(location);
 
@@ -2347,10 +2347,10 @@ namespace lambda {
 
     template<typename T, typename TagT>
     size_t Index<T, TagT>::release_locations(
-            flare::robin_set<unsigned> &locations) {
+            melon::robin_set<unsigned> &locations) {
         for (auto location : locations) {
             if (_empty_slots.is_in_set(location))
-                FLARE_CHECK(false) <<
+                MELON_CHECK(false) <<
                                    "Trying to release location, but location already in empty slots";
             _empty_slots.insert(location);
 
@@ -2358,7 +2358,7 @@ namespace lambda {
         }
 
         if (_empty_slots.size() + _nd != _max_points)
-            FLARE_CHECK(false) << "#empty slots + nd != max points";
+            MELON_CHECK(false) << "#empty slots + nd != max points";
 
         return _nd;
     }
@@ -2393,7 +2393,7 @@ namespace lambda {
             return;
 
         if (_nd == _max_points) {
-            FLARE_LOG(INFO) << "Not repositioning frozen point as it is already at the end.";
+            MELON_LOG(INFO) << "Not repositioning frozen point as it is already at the end.";
             return;
         }
         reposition_point((uint32_t) _nd, (uint32_t) _max_points);
@@ -2429,12 +2429,12 @@ namespace lambda {
         }
 
         auto stop = std::chrono::high_resolution_clock::now();
-        FLARE_LOG(INFO) << "Resizing took: "
+        MELON_LOG(INFO) << "Resizing took: "
                         << std::chrono::duration<double>(stop - start).count() << "s";
     }
 
     template<typename T, typename TagT>
-    flare::result_status Index<T, TagT>::insert_point(const T *point, const TagT tag) {
+    melon::result_status Index<T, TagT>::insert_point(const T *point, const TagT tag) {
         assert(_has_built);
 
         std::shared_lock<std::shared_timed_mutex> shared_ul(_update_lock);
@@ -2479,7 +2479,7 @@ namespace lambda {
         if (_enable_tags) {
             if (_tag_to_location.find(tag) != _tag_to_location.end()) {
                 release_location(location);
-                return flare::result_status(-1, "already exists");
+                return melon::result_status(-1, "already exists");
             }
 
             _tag_to_location[tag] = location;
@@ -2502,20 +2502,20 @@ namespace lambda {
         ScratchStoreManager<T> manager(_query_scratch);
         auto scratch = manager.scratch_space();
         std::vector<neighbor> &pool = scratch.pool();
-        flare::robin_set<unsigned> &visited = scratch.visited();
+        melon::robin_set<unsigned> &visited = scratch.visited();
         pool.clear();
         visited.clear();
         search_for_point_and_add_links(location, _indexingQueueSize, pool, visited,
                                        scratch.des(), scratch.best_l_nodes(),
                                        scratch.inserted_into_pool_rs(),
                                        scratch.inserted_into_pool_bs());
-        return flare::result_status::success();
+        return melon::result_status::success();
     }
 
     template<typename T, typename TagT>
     int Index<T, TagT>::lazy_delete(const TagT &tag) {
         if ((_eager_done) && (!_data_compacted)) {
-            FLARE_CHECK(false) <<
+            MELON_CHECK(false) <<
                                "Eager delete requests were issued but data was not compacted, "
                                "cannot proceed with lazy_deletes";
         }
@@ -2526,7 +2526,7 @@ namespace lambda {
         _data_compacted = false;
 
         if (_tag_to_location.find(tag) == _tag_to_location.end()) {
-            FLARE_LOG(ERROR) << "Delete tag not found " << tag;
+            MELON_LOG(ERROR) << "Delete tag not found " << tag;
             return -1;
         }
         assert(_tag_to_location[tag] < _max_points);
@@ -2540,13 +2540,13 @@ namespace lambda {
     }
 
     template<typename T, typename TagT>
-    flare::result_status Index<T, TagT>::lazy_delete(const std::vector<TagT> &tags,
+    melon::result_status Index<T, TagT>::lazy_delete(const std::vector<TagT> &tags,
                                                      std::vector<TagT> &failed_tags) {
         if (failed_tags.size() > 0) {
-            return flare::result_status(-1, "failed_tags should be passed as an empty list");
+            return melon::result_status(-1, "failed_tags should be passed as an empty list");
         }
         if ((_eager_done) && (!_data_compacted)) {
-            return flare::result_status(-1,
+            return melon::result_status(-1,
                                         "Eager delete requests were issued but data was not compacted, "
                                         "cannot proceed with lazy_deletes");
         }
@@ -2566,7 +2566,7 @@ namespace lambda {
                 _tag_to_location.erase(tag);
             }
         }
-        return flare::result_status::success();
+        return melon::result_status::success();
     }
 
     template<typename T, typename TagT>
@@ -2575,7 +2575,7 @@ namespace lambda {
     }
 
     template<typename T, typename TagT>
-    void Index<T, TagT>::get_active_tags(flare::robin_set<TagT> &active_tags) {
+    void Index<T, TagT>::get_active_tags(melon::robin_set<TagT> &active_tags) {
         active_tags.clear();
         std::shared_lock<std::shared_timed_mutex> tl(_tag_lock);
         for (auto iter : _tag_to_location) {
@@ -2585,25 +2585,25 @@ namespace lambda {
 
     template<typename T, typename TagT>
     void Index<T, TagT>::print_status() const {
-        FLARE_LOG(INFO) << "------------------- Index object: " << (uint64_t) this
+        MELON_LOG(INFO) << "------------------- Index object: " << (uint64_t) this
                         << " -------------------";
-        FLARE_LOG(INFO) << "Number of points: " << _nd;
-        FLARE_LOG(INFO) << "Graph size: " << _final_graph.size();
-        FLARE_LOG(INFO) << "Location to tag size: " << _location_to_tag.size();
-        FLARE_LOG(INFO) << "Tag to location size: " << _tag_to_location.size();
-        FLARE_LOG(INFO) << "Number of empty slots: " << _empty_slots.size();
-        FLARE_LOG(INFO) << std::boolalpha
+        MELON_LOG(INFO) << "Number of points: " << _nd;
+        MELON_LOG(INFO) << "Graph size: " << _final_graph.size();
+        MELON_LOG(INFO) << "Location to tag size: " << _location_to_tag.size();
+        MELON_LOG(INFO) << "Tag to location size: " << _tag_to_location.size();
+        MELON_LOG(INFO) << "Number of empty slots: " << _empty_slots.size();
+        MELON_LOG(INFO) << std::boolalpha
                         << "Data compacted: " << this->_data_compacted
                         << " Lazy done: " << this->_lazy_done
                         << " Eager done: " << this->_eager_done;
-        FLARE_LOG(INFO) << "---------------------------------------------------------"
+        MELON_LOG(INFO) << "---------------------------------------------------------"
                            "------------";
     }
 
     template<typename T, typename TagT>
-    flare::result_status Index<T, TagT>::optimize_index_layout() {  // use after build or load
+    melon::result_status Index<T, TagT>::optimize_index_layout() {  // use after build or load
         if (_dynamic_index)
-            return flare::result_status(-1,
+            return melon::result_status(-1,
                                         "Optimize_index_layout not implemented for dyanmic indices");
 
         _data_len = (_aligned_dim + 1) * sizeof(float);
@@ -2627,7 +2627,7 @@ namespace lambda {
         }
         _final_graph.clear();
         _final_graph.shrink_to_fit();
-        return flare::result_status::success();
+        return melon::result_status::success();
     }
 
     template<typename T, typename TagT>
@@ -2641,7 +2641,7 @@ namespace lambda {
         // std::mt19937 rng(rand());
         // GenRandom(rng, init_ids.data(), L, (unsigned) nd_);
 
-        flare::dynamic_bitset<> flags{_nd, 0};
+        melon::dynamic_bitset<> flags{_nd, 0};
         unsigned tmp_l = 0;
         unsigned *neighbors =
                 (unsigned *) (_opt_graph + _node_size * _start + _data_len);
@@ -2734,103 +2734,103 @@ namespace lambda {
     const float Index<T, TagT>::INDEX_GROWTH_FACTOR = 1.5f;
 
     // EXPORTS
-    template FLARE_EXPORT
+    template MELON_EXPORT
     class Index<float, int32_t>;
 
-    template FLARE_EXPORT
+    template MELON_EXPORT
     class Index<int8_t, int32_t>;
 
-    template FLARE_EXPORT
+    template MELON_EXPORT
     class Index<uint8_t, int32_t>;
 
-    template FLARE_EXPORT
+    template MELON_EXPORT
     class Index<float, uint32_t>;
 
-    template FLARE_EXPORT
+    template MELON_EXPORT
     class Index<int8_t, uint32_t>;
 
-    template FLARE_EXPORT
+    template MELON_EXPORT
     class Index<uint8_t, uint32_t>;
 
-    template FLARE_EXPORT
+    template MELON_EXPORT
     class Index<float, int64_t>;
 
-    template FLARE_EXPORT
+    template MELON_EXPORT
     class Index<int8_t, int64_t>;
 
-    template FLARE_EXPORT
+    template MELON_EXPORT
     class Index<uint8_t, int64_t>;
 
-    template FLARE_EXPORT
+    template MELON_EXPORT
     class Index<float, uint64_t>;
 
-    template FLARE_EXPORT
+    template MELON_EXPORT
     class Index<int8_t, uint64_t>;
 
-    template FLARE_EXPORT
+    template MELON_EXPORT
     class Index<uint8_t, uint64_t>;
 
-    template FLARE_EXPORT std::pair<uint32_t, uint32_t>
+    template MELON_EXPORT std::pair<uint32_t, uint32_t>
     Index<float, uint64_t>::search<uint64_t>(const float *query, const size_t K,
                                              const unsigned L, uint64_t *indices,
                                              float *distances);
 
-    template FLARE_EXPORT std::pair<uint32_t, uint32_t>
+    template MELON_EXPORT std::pair<uint32_t, uint32_t>
     Index<float, uint64_t>::search<uint32_t>(const float *query, const size_t K,
                                              const unsigned L, uint32_t *indices,
                                              float *distances);
 
-    template FLARE_EXPORT std::pair<uint32_t, uint32_t>
+    template MELON_EXPORT std::pair<uint32_t, uint32_t>
     Index<uint8_t, uint64_t>::search<uint64_t>(const uint8_t *query,
                                                const size_t K, const unsigned L,
                                                uint64_t *indices,
                                                float *distances);
 
-    template FLARE_EXPORT std::pair<uint32_t, uint32_t>
+    template MELON_EXPORT std::pair<uint32_t, uint32_t>
     Index<uint8_t, uint64_t>::search<uint32_t>(const uint8_t *query,
                                                const size_t K, const unsigned L,
                                                uint32_t *indices,
                                                float *distances);
 
-    template FLARE_EXPORT std::pair<uint32_t, uint32_t>
+    template MELON_EXPORT std::pair<uint32_t, uint32_t>
     Index<int8_t, uint64_t>::search<uint64_t>(const int8_t *query, const size_t K,
                                               const unsigned L, uint64_t *indices,
                                               float *distances);
 
-    template FLARE_EXPORT std::pair<uint32_t, uint32_t>
+    template MELON_EXPORT std::pair<uint32_t, uint32_t>
     Index<int8_t, uint64_t>::search<uint32_t>(const int8_t *query, const size_t K,
                                               const unsigned L, uint32_t *indices,
                                               float *distances);
 
     // TagT==uint32_t
-    template FLARE_EXPORT std::pair<uint32_t, uint32_t>
+    template MELON_EXPORT std::pair<uint32_t, uint32_t>
     Index<float, uint32_t>::search<uint64_t>(const float *query, const size_t K,
                                              const unsigned L, uint64_t *indices,
                                              float *distances);
 
-    template FLARE_EXPORT std::pair<uint32_t, uint32_t>
+    template MELON_EXPORT std::pair<uint32_t, uint32_t>
     Index<float, uint32_t>::search<uint32_t>(const float *query, const size_t K,
                                              const unsigned L, uint32_t *indices,
                                              float *distances);
 
-    template FLARE_EXPORT std::pair<uint32_t, uint32_t>
+    template MELON_EXPORT std::pair<uint32_t, uint32_t>
     Index<uint8_t, uint32_t>::search<uint64_t>(const uint8_t *query,
                                                const size_t K, const unsigned L,
                                                uint64_t *indices,
                                                float *distances);
 
-    template FLARE_EXPORT std::pair<uint32_t, uint32_t>
+    template MELON_EXPORT std::pair<uint32_t, uint32_t>
     Index<uint8_t, uint32_t>::search<uint32_t>(const uint8_t *query,
                                                const size_t K, const unsigned L,
                                                uint32_t *indices,
                                                float *distances);
 
-    template FLARE_EXPORT std::pair<uint32_t, uint32_t>
+    template MELON_EXPORT std::pair<uint32_t, uint32_t>
     Index<int8_t, uint32_t>::search<uint64_t>(const int8_t *query, const size_t K,
                                               const unsigned L, uint64_t *indices,
                                               float *distances);
 
-    template FLARE_EXPORT std::pair<uint32_t, uint32_t>
+    template MELON_EXPORT std::pair<uint32_t, uint32_t>
     Index<int8_t, uint32_t>::search<uint32_t>(const int8_t *query, const size_t K,
                                               const unsigned L, uint32_t *indices,
                                               float *distances);

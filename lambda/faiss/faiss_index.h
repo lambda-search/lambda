@@ -42,7 +42,7 @@ namespace lambda {
 
         void clear() override;
 
-        int load(const std::string &file, flare::write_lock &index_wlock) override;
+        int load(const std::string &file, melon::write_lock &index_wlock) override;
 
         int save(const std::string &file) override;
 
@@ -99,7 +99,7 @@ namespace lambda {
             return;
         }
 
-        int load(const std::string &file, flare::write_lock &index_wlock) override {
+        int load(const std::string &file, melon::write_lock &index_wlock) override {
             return 0;
         }
 

@@ -28,7 +28,7 @@ typedef io_context_t IOContext;
 #include <cstdio>
 #include <mutex>
 #include <thread>
-#include "flare/container/robin_map.h"
+#include "melon/container/robin_map.h"
 #include "utils.h"
 #include "lambda/common/math_utils.h"
 
@@ -53,7 +53,7 @@ namespace lambda {
 
     class AlignedFileReader {
     protected:
-        flare::robin_map<std::thread::id, IOContext> ctx_map;
+        melon::robin_map<std::thread::id, IOContext> ctx_map;
         std::mutex ctx_mut;
 
     public:

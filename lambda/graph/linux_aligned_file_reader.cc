@@ -9,21 +9,21 @@
 #include <cassert>
 #include <cstdio>
 #include <iostream>
-#include "flare/container/robin_map.h"
+#include "melon/container/robin_map.h"
 #include "utils.h"
 
 #define MAX_EVENTS 1024
 
 namespace lambda {
     namespace {
-#ifdef FLARE_PLATFORM_OSX
+#ifdef MELON_PLATFORM_OSX
 
         void execute_io(IOContext ctx, int fd, std::vector<AlignedRead> &read_reqs,
                         uint64_t n_retries = 0) {
 #ifdef DEBUG
             for (auto &req : read_reqs) {
           assert(IS_ALIGNED(req.len, 512));
-          FLARE_LOG(DEBUG)<< "request:"<<req.offset<<":"<<req.len;
+          MELON_LOG(DEBUG)<< "request:"<<req.offset<<":"<<req.len;
           assert(IS_ALIGNED(req.offset, 512));
           assert(IS_ALIGNED(req.buf, 512));
           // assert(malloc_usable_size(req.buf) >= req.len);
@@ -46,7 +46,7 @@ namespace lambda {
 #ifdef DEBUG
             for (auto &req : read_reqs) {
               assert(IS_ALIGNED(req.len, 512));
-              FLARE_LOG(DEBUG) << "request:"<<req.offset<<":"<<req.len;
+              MELON_LOG(DEBUG) << "request:"<<req.offset<<":"<<req.len;
               assert(IS_ALIGNED(req.offset, 512));
               assert(IS_ALIGNED(req.buf, 512));
               // assert(malloc_usable_size(req.buf) >= req.len);
@@ -123,12 +123,12 @@ namespace lambda {
         ret = ::fcntl(this->file_desc, F_GETFD);
         if (ret == -1) {
             if (errno != EBADF) {
-                FLARE_LOG(ERROR) << "close() not called";
+                MELON_LOG(ERROR) << "close() not called";
                 // close file desc
                 ret = ::close(this->file_desc);
                 // error checks
                 if (ret == -1) {
-                    FLARE_LOG(ERROR) << "close() failed; returned " << ret << ", errno=" << errno
+                    MELON_LOG(ERROR) << "close() failed; returned " << ret << ", errno=" << errno
                                      << ":" << ::strerror(errno);
                 }
             }
@@ -139,7 +139,7 @@ namespace lambda {
         std::unique_lock<std::mutex> lk(ctx_mut);
         // perform checks only in DEBUG mode
         if (ctx_map.find(std::this_thread::get_id()) == ctx_map.end()) {
-            FLARE_LOG(ERROR) << "bad thread access; returning -1 as io_context_t";
+            MELON_LOG(ERROR) << "bad thread access; returning -1 as io_context_t";
             return this->bad_ctx;
         } else {
             return ctx_map[std::this_thread::get_id()];
@@ -150,11 +150,11 @@ namespace lambda {
         auto my_id = std::this_thread::get_id();
         std::unique_lock<std::mutex> lk(ctx_mut);
         if (ctx_map.find(my_id) != ctx_map.end()) {
-            FLARE_LOG(ERROR) << "multiple calls to register_thread from the same thread";
+            MELON_LOG(ERROR) << "multiple calls to register_thread from the same thread";
             return;
         }
         IOContext ctx;
-#ifdef FLARE_PLATFORM_OSX
+#ifdef MELON_PLATFORM_OSX
         ctx_map[my_id] = ctx;
 #else
         int ret = io_setup(MAX_EVENTS, &ctx);
@@ -162,10 +162,10 @@ namespace lambda {
             lk.unlock();
             assert(errno != EAGAIN);
             assert(errno != ENOMEM);
-            FLARE_LOG(ERROR) << "io_setup() failed; returned " << ret << ", errno=" << errno
+            MELON_LOG(ERROR) << "io_setup() failed; returned " << ret << ", errno=" << errno
                       << ":" << ::strerror(errno);
         } else {
-            FLARE_LOG(INFO) << "allocating ctx: " << ctx << " to thread-id:" << my_id;
+            MELON_LOG(INFO) << "allocating ctx: " << ctx << " to thread-id:" << my_id;
             ctx_map[my_id] = ctx;
         }
 #endif
@@ -178,21 +178,21 @@ namespace lambda {
         assert(ctx_map.find(my_id) != ctx_map.end());
 
         lk.unlock();
-#ifndef FLARE_PLATFORM_OSX
+#ifndef MELON_PLATFORM_OSX
         io_context_t ctx = this->get_ctx();
         io_destroy(ctx);
 #endif
         //  assert(ret == 0);
         lk.lock();
         ctx_map.erase(my_id);
-        FLARE_LOG(ERROR) << "returned ctx from thread-id:" << my_id;
+        MELON_LOG(ERROR) << "returned ctx from thread-id:" << my_id;
         lk.unlock();
     }
 
     void LinuxAlignedFileReader::deregister_all_threads() {
         std::unique_lock<std::mutex> lk(ctx_mut);
         for (auto x = ctx_map.begin(); x != ctx_map.end(); x++) {
-#ifndef FLARE_PLATFORM_OSX
+#ifndef MELON_PLATFORM_OSX
             IOContext ctx = x.value();
             io_destroy(ctx);
 #endif
@@ -206,7 +206,7 @@ namespace lambda {
     }
 
     void LinuxAlignedFileReader::open(const std::string &fname) {
-#ifdef FLARE_PLATFORM_OSX
+#ifdef MELON_PLATFORM_OSX
         int flags = O_RDONLY;
 #else
         int flags = O_DIRECT | O_RDONLY | O_LARGEFILE;
@@ -214,7 +214,7 @@ namespace lambda {
         this->file_desc = ::open(fname.c_str(), flags);
         // error checks
         assert(this->file_desc != -1);
-        FLARE_LOG(INFO) << "Opened file : " << fname;
+        MELON_LOG(INFO) << "Opened file : " << fname;
     }
 
     void LinuxAlignedFileReader::close() {
@@ -231,7 +231,7 @@ namespace lambda {
     void LinuxAlignedFileReader::read(std::vector<AlignedRead> &read_reqs,
                                       IOContext &ctx, bool async) {
         if (async == true) {
-            FLARE_LOG(INFO) << "Async currently not supported in linux.";
+            MELON_LOG(INFO) << "Async currently not supported in linux.";
         }
         assert(this->file_desc != -1);
         //#pragma omp critical

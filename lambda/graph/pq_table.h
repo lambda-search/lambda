@@ -43,7 +43,7 @@ namespace lambda {
         }
 
 
-        [[nodiscard]] flare::result_status load_pq_centroid_bin(const char *pq_table_file, size_t num_chunks) {
+        [[nodiscard]] melon::result_status load_pq_centroid_bin(const char *pq_table_file, size_t num_chunks) {
 
             size_t nr, nc;
             std::string rotmat_file =
@@ -55,14 +55,14 @@ namespace lambda {
             }
 
             if (nr != 4) {
-                FLARE_LOG(INFO) << "Error reading pq_pivots file " << pq_table_file
+                MELON_LOG(INFO) << "Error reading pq_pivots file " << pq_table_file
                                 << ". Offsets dont contain correct metadata, # offsets = "
                                 << nr << ", but expecting " << 4;
-                return flare::result_status(-1,
+                return melon::result_status(-1,
                                             "Error reading pq_pivots file at offsets data.");
             }
 
-            FLARE_LOG(INFO) << "Offsets: " << file_offset_data[0] << " "
+            MELON_LOG(INFO) << "Offsets: " << file_offset_data[0] << " "
                             << file_offset_data[1] << " " << file_offset_data[2] << " "
                             << file_offset_data[3];
 
@@ -72,10 +72,10 @@ namespace lambda {
                 return rs;
             }
             if ((nr != NUM_PQ_CENTROIDS)) {
-                FLARE_LOG(INFO) << "Error reading pq_pivots file " << pq_table_file
+                MELON_LOG(INFO) << "Error reading pq_pivots file " << pq_table_file
                                 << ". file_num_centers  = " << nr << " but expecting "
                                 << NUM_PQ_CENTROIDS << " centers";
-                return flare::result_status(-1,
+                return melon::result_status(-1,
                                             "Error reading pq_pivots file at pivots data.");
             }
 
@@ -87,11 +87,11 @@ namespace lambda {
                 return rs;
             }
             if ((nr != this->_ndims) || (nc != 1)) {
-                FLARE_LOG(ERROR) << "Error reading centroids from pq_pivots file "
+                MELON_LOG(ERROR) << "Error reading centroids from pq_pivots file "
                                  << pq_table_file << ". file_dim  = " << nr
                                  << ", file_cols = " << nc << " but expecting "
                                  << this->_ndims << " entries in 1 dimension.";
-                return flare::result_status(-1,
+                return melon::result_status(-1,
                                             "Error reading pq_pivots file at centroid data.");
             }
 
@@ -102,14 +102,14 @@ namespace lambda {
             }
 
             if (nc != 1 || (nr != num_chunks + 1 && num_chunks != 0)) {
-                FLARE_LOG(ERROR) << "Error loading chunk offsets file. numc: " << nc
+                MELON_LOG(ERROR) << "Error loading chunk offsets file. numc: " << nc
                                  << " (should be 1). numr: " << nr << " (should be "
                                  << num_chunks + 1 << " or 0 if we need to infer)";
-                return flare::result_status(-1, "Error loading chunk offsets file");
+                return melon::result_status(-1, "Error loading chunk offsets file");
             }
 
             this->_n_chunks = nr - 1;
-            FLARE_LOG(INFO) << "Loaded PQ Pivots: #ctrs: " << NUM_PQ_CENTROIDS
+            MELON_LOG(INFO) << "Loaded PQ Pivots: #ctrs: " << NUM_PQ_CENTROIDS
                             << ", #dims: " << this->_ndims
                             << ", #chunks: " << this->_n_chunks;
 
@@ -119,8 +119,8 @@ namespace lambda {
                     return rs;
                 }
                 if (nr != this->_ndims || nc != this->_ndims) {
-                    FLARE_LOG(ERROR) << "Error loading rotation matrix file";
-                    return flare::result_status(-1, "Error loading rotation matrix file");
+                    MELON_LOG(ERROR) << "Error loading rotation matrix file";
+                    return melon::result_status(-1, "Error loading rotation matrix file");
                 }
                 _use_rotation = true;
             }
@@ -132,7 +132,7 @@ namespace lambda {
                     _tables_tr[j * 256 + i] = _tables[i * this->_ndims + j];
                 }
             }
-            return flare::result_status::success();
+            return melon::result_status::success();
         }
 
         uint32_t get_num_chunks() const {

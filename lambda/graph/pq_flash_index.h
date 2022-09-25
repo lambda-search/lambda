@@ -11,8 +11,8 @@
 #include <sstream>
 #include <stack>
 #include <string>
-#include "flare/container/robin_map.h"
-#include "flare/container/robin_set.h"
+#include "melon/container/robin_map.h"
+#include "melon/container/robin_set.h"
 
 #include "aligned_file_reader.h"
 #include "concurrent_queue.h"
@@ -21,7 +21,7 @@
 #include "percentile_stats.h"
 #include "pq_table.h"
 #include "utils.h"
-#include <flare/base/profile.h>
+#include <melon/base/profile.h>
 
 #define MAX_GRAPH_DEGREE 512
 #define MAX_N_CMPS 16384
@@ -51,7 +51,7 @@ namespace lambda {
         float *aligned_query_float = nullptr;
         float *rotated_query = nullptr;
 
-        flare::robin_set<uint64_t> *visited = nullptr;
+        melon::robin_set<uint64_t> *visited = nullptr;
 
         void reset() {
             coord_idx = 0;
@@ -69,36 +69,36 @@ namespace lambda {
     template<typename T>
     class pq_flash_index {
     public:
-        FLARE_EXPORT pq_flash_index(
+        MELON_EXPORT pq_flash_index(
                 std::shared_ptr<AlignedFileReader> &fileReader,
                 lambda::Metric metric = lambda::Metric::L2);
 
-        FLARE_EXPORT ~pq_flash_index();
+        MELON_EXPORT ~pq_flash_index();
 
         // load compressed data, and obtains the handle to the disk-resident index
-        FLARE_EXPORT flare::result_status load(uint32_t num_threads, const char *index_prefix);
+        MELON_EXPORT melon::result_status load(uint32_t num_threads, const char *index_prefix);
 
-        FLARE_EXPORT void load_cache_list(std::vector<uint32_t> &node_list);
+        MELON_EXPORT void load_cache_list(std::vector<uint32_t> &node_list);
 
-        FLARE_EXPORT flare::result_status generate_cache_list_from_sample_queries(
+        MELON_EXPORT melon::result_status generate_cache_list_from_sample_queries(
                 std::string sample_bin, uint64_t l_search, uint64_t beamwidth,
                 uint64_t num_nodes_to_cache, uint32_t num_threads,
                 std::vector<uint32_t> &node_list);
 
-        FLARE_EXPORT void cache_bfs_levels(uint64_t num_nodes_to_cache,
+        MELON_EXPORT void cache_bfs_levels(uint64_t num_nodes_to_cache,
                                            std::vector<uint32_t> &node_list);
 
-        FLARE_EXPORT void cached_beam_search(
+        MELON_EXPORT void cached_beam_search(
                 const T *query, const uint64_t k_search, const uint64_t l_search, uint64_t *res_ids,
                 float *res_dists, const uint64_t beam_width,
                 const bool use_reorder_data = false, query_stats *stats = nullptr);
 
-        FLARE_EXPORT void cached_beam_search(
+        MELON_EXPORT void cached_beam_search(
                 const T *query, const uint64_t k_search, const uint64_t l_search, uint64_t *res_ids,
                 float *res_dists, const uint64_t beam_width, const uint32_t io_limit,
                 const bool use_reorder_data = false, query_stats *stats = nullptr);
 
-        FLARE_EXPORT uint32_t range_search(const T *query1, const double range,
+        MELON_EXPORT uint32_t range_search(const T *query1, const double range,
                                        const uint64_t min_l_search,
                                        const uint64_t max_l_search,
                                        std::vector<uint64_t> &indices,
@@ -109,11 +109,11 @@ namespace lambda {
         std::shared_ptr<AlignedFileReader> &reader;
 
     protected:
-        FLARE_EXPORT void use_medoids_data_as_centroids();
+        MELON_EXPORT void use_medoids_data_as_centroids();
 
-        FLARE_EXPORT void setup_thread_data(uint64_t nthreads);
+        MELON_EXPORT void setup_thread_data(uint64_t nthreads);
 
-        FLARE_EXPORT void destroy_thread_data();
+        MELON_EXPORT void destroy_thread_data();
 
     private:
         // index info
@@ -178,11 +178,11 @@ namespace lambda {
 
         // nhood_cache
         unsigned *nhood_cache_buf = nullptr;
-        flare::robin_map<uint32_t, std::pair<uint32_t, uint32_t *>> nhood_cache;
+        melon::robin_map<uint32_t, std::pair<uint32_t, uint32_t *>> nhood_cache;
 
         // coord_cache
         T *coord_cache_buf = nullptr;
-        flare::robin_map<uint32_t, T *> coord_cache;
+        melon::robin_map<uint32_t, T *> coord_cache;
 
         // thread-specific scratch
         ConcurrentQueue<ThreadData<T>> thread_data;

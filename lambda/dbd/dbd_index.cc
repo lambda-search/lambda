@@ -7,7 +7,7 @@
   DBDScopedPtr r_ptr;                                               \
   do {                                                              \
     if (ann_index_.Read(&r_ptr) != 0) {                             \
-      FLARE_LOG_EVERY_N(ERROR, 10) << "dbd read failed";  \
+      MELON_LOG_EVERY_N(ERROR, 10) << "dbd read failed";  \
       return args;                                                  \
     }                                                               \
   } while (false)
@@ -34,10 +34,10 @@ namespace lambda {
         };
         bool status = ann_index_.Modify(init_fn);
         if (!status) {
-            FLARE_LOG_EVERY_N(ERROR, 10) << "Fail to init background:";
+            MELON_LOG_EVERY_N(ERROR, 10) << "Fail to init background:";
             return !status;
         }
-        FLARE_LOG(INFO) << "Success to init dbd_index";
+        MELON_LOG(INFO) << "Success to init dbd_index";
         return 0;
     }
 
@@ -101,7 +101,7 @@ namespace lambda {
         ann_index_.Modify(clear_fn);
     }
 
-    int dbd_index::load(const std::string &file, flare::write_lock &index_wlock) {
+    int dbd_index::load(const std::string &file, melon::write_lock &index_wlock) {
         const auto load_fn = [&](ann_index_ptr &index) -> bool {
             return index->load(file, index_wlock) == 0;
         };

@@ -15,10 +15,10 @@
 
 #include "neighbor.h"
 #include "parameters.h"
-#include "flare/container/robin_set.h"
+#include "melon/container/robin_set.h"
 #include "utils.h"
 
-#include <flare/base/profile.h>
+#include <melon/base/profile.h>
 
 namespace lambda {
 #define MAX_OPQ_ITERS 20
@@ -52,27 +52,27 @@ namespace lambda {
                                           std::string prefix_path);
 
     template<typename T>
-    [[nodiscard]] flare::result_status retrieve_shard_data_from_ids(const std::string data_file,
+    [[nodiscard]] melon::result_status retrieve_shard_data_from_ids(const std::string data_file,
                                      std::string idmap_filename,
                                      std::string data_filename);
 
     template<typename T>
-    [[nodiscard]] flare::result_status partition(const std::string data_file, const float sampling_rate,
+    [[nodiscard]] melon::result_status partition(const std::string data_file, const float sampling_rate,
                   size_t num_centers, size_t max_k_means_reps,
                   const std::string prefix_path, size_t k_base);
 
     template<typename T>
-    [[nodiscard]] flare::result_status partition_with_ram_budget(const std::string data_file,
+    [[nodiscard]] melon::result_status partition_with_ram_budget(const std::string data_file,
                                   const double sampling_rate, double ram_budget,
                                   size_t graph_degree,
                                   const std::string prefix_path, size_t k_base, int *num_parts);
 
-    FLARE_EXPORT [[nodiscard]] flare::result_status generate_pq_pivots(
+    MELON_EXPORT [[nodiscard]] melon::result_status generate_pq_pivots(
             const float *train_data, size_t num_train, unsigned dim,
             unsigned num_centers, unsigned num_pq_chunks, unsigned max_k_means_reps,
             std::string pq_pivots_path, bool make_zero_mean = false);
 
-    FLARE_EXPORT [[nodiscard]] flare::result_status generate_opq_pivots(const float *train_data,
+    MELON_EXPORT [[nodiscard]] melon::result_status generate_opq_pivots(const float *train_data,
                                          size_t num_train, unsigned dim,
                                          unsigned num_centers,
                                          unsigned num_pq_chunks,
@@ -80,7 +80,7 @@ namespace lambda {
                                          bool make_zero_mean = false);
 
     template<typename T>
-    [[nodiscard]] flare::result_status generate_pq_data_from_pivots(const std::string data_file,
+    [[nodiscard]] melon::result_status generate_pq_data_from_pivots(const std::string data_file,
                                      unsigned num_centers, unsigned num_pq_chunks,
                                      std::string pq_pivots_path,
                                      std::string pq_compressed_vectors_path,

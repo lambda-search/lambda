@@ -37,7 +37,7 @@ namespace lambda {
 
     inline void realloc_aligned(void **ptr, size_t size, size_t align) {
         assert(IS_ALIGNED(size, align));
-        FLARE_LOG(ERROR) << "No aligned realloc on GCC. Must malloc and mem_align, "
+        MELON_LOG(ERROR) << "No aligned realloc on GCC. Must malloc and mem_align, "
                             "left it out for now.";
         assert(*ptr != nullptr);
     }

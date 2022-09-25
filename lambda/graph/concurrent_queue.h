@@ -81,7 +81,7 @@ namespace lambda {
             } else {
                 T ret = this->q.front();
                 this->q.pop();
-                // FLARE_LOG(INFO) << "thread_id: " << std::this_thread::get_id() << ",
+                // MELON_LOG(INFO) << "thread_id: " << std::this_thread::get_id() << ",
                 // ctx: "
                 // << ret.ctx << "\n";
                 lk.unlock();
