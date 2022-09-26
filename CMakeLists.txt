@@ -42,7 +42,7 @@ option(CARBIN_STATUS_DEBUG "cmake toolchain debug info" ON)
 option(ENABLE_TESTING "enable unit test" OFF)
 option(CARBIN_PACKAGE_GEN "enable package gen" OFF)
 option(ENABLE_BENCHMARK "enable benchmark" OFF)
-option(ENABLE_EXAMPLE "enable benchmark" OFF)
+option(ENABLE_EXAMPLE "enable benchmark" ON)
 option(ENABLE_SUMMARY "enable summary output" ON)
 # it is too many
 option(ENABLE_SUMMARY_CXX_FLAG "enable cxx flags" OFF)
@@ -83,6 +83,8 @@ include(require_gflags)
 
 
 include(FindProtobuf)
+find_package(OpenMP REQUIRED)
+find_package(MKL  REQUIRED)
 
 set(DYNAMIC_LIB
         ${CMAKE_THREAD_LIBS_INIT}
@@ -128,6 +130,9 @@ if (ENABLE_TESTING)
     add_subdirectory(test)
 endif (ENABLE_TESTING)
 
+if (ENABLE_EXAMPLE)
+    add_subdirectory(example)
+endif()
 ################################################################################
 # Installation of the library and all it's sub components. No need to edit this.
 ################################################################################

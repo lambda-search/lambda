@@ -45,7 +45,7 @@ namespace lambda {
                                                 uint32_t length) const override;
     };
 
-    // Slow implementations of the distance functions to get diskann to
+    // Slow implementations of the distance functions to get lambda to
     // work in pre-AVX machines. Performance here is not a concern, so we are
     // using the simplest possible implementation.
     template<typename T>

@@ -44,7 +44,7 @@ namespace lambda {
         float *aligned_pqtable_dist_scratch =
                 nullptr;  // MUST BE AT LEAST [256 * NCHUNKS]
         float *aligned_dist_scratch =
-                nullptr;  // MUST BE AT LEAST diskann MAX_DEGREE
+                nullptr;  // MUST BE AT LEAST lambda MAX_DEGREE
         uint8_t *aligned_pq_coord_scratch =
                 nullptr;  // MUST BE AT LEAST  [N_CHUNKS * MAX_DEGREE]
         T *aligned_query_T = nullptr;

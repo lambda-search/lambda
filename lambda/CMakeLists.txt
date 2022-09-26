@@ -14,8 +14,7 @@ set(LAMBDA_SRC
         common/roaring.c
         )
 
-find_package(OpenMP REQUIRED)
-find_package(MKL  REQUIRED)
+
 carbin_cc_library(
         NAMESPACE lambda
         NAME ann
@@ -26,3 +25,5 @@ carbin_cc_library(
         PUBLIC
         SHARED
 )
+
+add_subdirectory(tools)

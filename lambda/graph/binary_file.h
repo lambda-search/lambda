@@ -129,7 +129,7 @@ namespace lambda {
             }
             int npts_i32, dim_i32;
             npts_i32 = *((int*)header.data());
-            dim_i32 = *((int*)header.data() + sizeof(int));
+            dim_i32 = *((int*)(header.data() + sizeof(int)));
             npts = (unsigned) npts_i32;
             dim = (unsigned) dim_i32;
             auto actual_file_size = melon::file_size(bin_file, ec);
@@ -137,11 +137,11 @@ namespace lambda {
                     npts * dim * sizeof(T) + 2 * sizeof(uint32_t);
             if (actual_file_size != expected_actual_file_size) {
                 std::stringstream stream;
-                stream << "Error. File size mismatch. Actual size is " << actual_file_size
+                stream << "Error. File: "<<bin_file<<" size mismatch. Actual size is " << actual_file_size
                        << " while expected size is  " << expected_actual_file_size
                        << " npts = " << npts << " dim = " << dim
                        << " size of <T>= " << sizeof(T);
-                MELON_LOG(INFO) << stream.str();
+                MELON_LOG(ERROR) << stream.str();
                 return melon::result_status(-1, stream.str());
             }
             rounded_dim = ROUND_UP(dim, 8);

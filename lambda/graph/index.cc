@@ -367,7 +367,7 @@ namespace lambda {
     template<typename T, typename TagT>
     uint64_t Index<T, TagT>::save_graph(std::string graph_file) {
         melon::sequential_write_file out;
-        out.open(graph_file, false);
+        out.open(graph_file);
         uint64_t file_offset = 0;  // we will use this if we want
         out.reset(file_offset);
         uint64_t index_size = 24;
